@@ -1,17 +1,5 @@
 const url = "https://script.google.com/macros/s/AKfycbyQL6m6KbI3by8pzWayyvf4CA_zDnmAqJRwG9wZkcQWkJcPFZOMfC7IYyG1U4Rdye6SXA/exec";
 
-const pins = {
-  "Madelyn": "4827",
-  "Sandy": "6159",
-  "John": "2048",
-  "Carissa": "7731",
-  "Kendra": "9184",
-  "Phillip": "3562",
-  "Ananth": "6407",
-  "Hitesh": "1275",
-  "Meng": "8843",
-  "Kai": "5316"
-};
 
 function setStatus(message, type) {
   const status = document.getElementById("status");
@@ -31,11 +19,6 @@ function send(action) {
 
   if (pin === "") {
     setStatus("Error: Please enter your PIN.", "error");
-    return;
-  }
-
-  if (pins[name] !== pin) {
-    setStatus("Error: Incorrect PIN.", "error");
     return;
   }
 
