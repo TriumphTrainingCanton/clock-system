@@ -18,16 +18,22 @@
       Triumph Training Management View
     </p>
 
-    <div id="loginPanel">
+    <div id="loginPanel" class="admin-login">
+
       <input
         id="adminPin"
         type="password"
         inputmode="numeric"
         placeholder="Enter Admin PIN">
 
-      <button class="clock-in admin-unlock" onclick="unlockAdmin()">
+      <button
+        class="clock-in admin-unlock"
+        onclick="unlockAdmin()">
+
         Unlock Dashboard
+
       </button>
+
     </div>
 
     <p id="status"></p>
@@ -35,14 +41,22 @@
     <div id="dashboard" style="display: none;">
 
       <div class="admin-actions">
-        <button class="admin-small-button" onclick="loadAdminDashboard()">
+
+        <button
+          class="admin-small-button"
+          onclick="loadAdminDashboard()">
+
           Refresh Dashboard
+
         </button>
+
       </div>
 
       <div class="admin-grid">
+
         <div class="admin-card">
           <h2>Currently Clocked In</h2>
+
           <div id="clockedInList" class="admin-list">
             Loading...
           </div>
@@ -50,6 +64,7 @@
 
         <div class="admin-card">
           <h2>Payroll Snapshot</h2>
+
           <div id="payrollSummary" class="admin-list">
             Loading...
           </div>
@@ -57,6 +72,7 @@
 
         <div class="admin-card">
           <h2>Employee Pay Rates</h2>
+
           <div id="employeeRates" class="admin-list">
             Loading...
           </div>
@@ -64,24 +80,32 @@
 
         <div class="admin-card">
           <h2>Admin Analytics</h2>
+
           <div id="analyticsBox" class="admin-list">
             Loading...
           </div>
         </div>
+
       </div>
 
       <div class="admin-card full-width-card">
+
         <h2>Missed Punch Requests</h2>
+
         <div id="missedPunchRequests" class="admin-list">
           Loading...
         </div>
+
       </div>
 
       <div class="admin-card full-width-card">
+
         <h2>Recent Punches</h2>
+
         <div id="recentPunches" class="admin-list">
           Loading...
         </div>
+
       </div>
 
     </div>
