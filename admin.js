@@ -32,7 +32,7 @@ function loadAdminDashboard() {
   fetch(url, {
     method: "POST",
     body: JSON.stringify({
-      action: "Get Admin Dashboard",
+      action: "Admin Dashboard Data",
       adminPin: ADMIN_PIN
     })
   })
