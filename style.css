@@ -176,3 +176,15 @@ button:hover {
 .processing {
   color: #facc15 !important;
 }
+
+.missed-clock-out {
+  width: 100%;
+  max-width: 300px;
+  margin-top: 12px;
+  background: #f59e0b;
+  color: white;
+}
+
+.missed-clock-out:hover {
+  transform: translateY(-2px);
+}

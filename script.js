@@ -64,6 +64,11 @@ function send(action) {
 
 }
 
+
+function missedClockOut() {
+  send("Missed Clock Out");
+}
+
 function updateClock() {
 
   const now = new Date();
