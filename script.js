@@ -102,3 +102,6 @@ function clockIn() {
 function clockOut() {
   send("Clock Out");
 }
+function missedClockOut() {
+  send("Missed Clock Out");
+}
