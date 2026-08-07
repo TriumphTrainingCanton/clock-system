@@ -1,70 +1,47 @@
 <!DOCTYPE html>
-<html>
-
+<html lang="en">
 <head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Triumph Training Employee Portal</title>
   <link rel="stylesheet" href="style.css">
 </head>
-
 <body>
-
   <div class="portal">
-
     <img src="logo.png" class="logo" alt="Triumph Training Logo">
-
     <h1>Triumph Training Employee Portal</h1>
+    <p class="subtitle">Employee Clock In System</p>
 
-    <p class="subtitle">
-      Employee Clock In System
-    </p>
-<div class="clock-card">
-  <div id="liveTime">--:-- --</div>
-  <div id="liveDate">Loading date...</div>
-</div>
+    <div class="clock-card">
+      <div id="liveTime">--:-- --</div>
+      <div id="liveDate">Loading date...</div>
+    </div>
 
     <select id="name">
-
-      <option value="">
-        Select Employee
-      </option>
-
+      <option value="">Select Employee</option>
       <option>Madelyn</option>
       <option>Sandy</option>
       <option>John</option>
-      <option>Carissa</option>
       <option>Kendra</option>
       <option>Phillip</option>
       <option>Ananth</option>
       <option>Hitesh</option>
       <option>Meng</option>
-      <option>Kai</option>
-
+      <option>Taylor Davis</option>
     </select>
 
-    <input
-      id="pin"
-      type="password"
-      inputmode="numeric"
-      maxlength="4"
-      placeholder="Enter 4-digit PIN">
+    <input id="pin" type="password" inputmode="numeric" maxlength="4" placeholder="Enter 4-digit PIN">
 
     <div class="buttons">
-
-      <button class="clock-in" onclick="clockIn()">
-        Clock In
-      </button>
-
-      <button class="clock-out" onclick="clockOut()">
-        Clock Out
-      </button>
-
+      <button class="clock-in" onclick="clockIn()">Clock In</button>
+      <button class="clock-out" onclick="clockOut()">Clock Out</button>
     </div>
 
-    <p id="status"></p>
+    <button class="missed-button" onclick="missedClockOut()">Missed Clock Out</button>
 
+    <p id="status"></p>
   </div>
 
   <script src="script.js"></script>
-
 </body>
 </html>

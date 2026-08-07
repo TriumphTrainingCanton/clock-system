@@ -176,3 +176,53 @@ button:hover {
 .processing {
   color: #facc15 !important;
 }
+
+
+/* MISSED CLOCK OUT BUTTON */
+.missed-button {
+  width: 100%;
+  max-width: 300px;
+  margin-top: 12px;
+  padding: 13px;
+  border: none;
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: 0.2s;
+  background: #facc15;
+  color: black;
+}
+
+.missed-button:hover {
+  transform: translateY(-2px);
+  background: #eab308;
+}
+
+/* ADMIN LOGIN STACK */
+.admin-login {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: center;
+}
+
+.admin-login input,
+.admin-unlock {
+  width: 100%;
+  max-width: 320px;
+  margin-bottom: 0;
+}
+
+.admin-section {
+  margin-top: 18px;
+  background: rgba(255,255,255,0.10);
+  border-radius: 14px;
+  padding: 16px;
+  color: white;
+  text-align: left;
+}
+
+.admin-section h2 {
+  margin-top: 0;
+}

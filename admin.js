@@ -1,4 +1,4 @@
-const url = "https://script.google.com/macros/s/AKfycbyQL6m6KbI3by8pzWayyvf4CA_zDnmAqJRwG9wZkcQWkJcPFZOMfC7IYyG1U4Rdye6SXA/exec";
+const url = "https://script.google.com/macros/s/AKfycbwidHd1FgdRr3fUx2uqAAbBE3tUFGcFKOxqzN-lI7HT_-EFtaeVHMtRITl9faMdmyiDLA/exec";
 
 const ADMIN_PIN = "9274";
 
