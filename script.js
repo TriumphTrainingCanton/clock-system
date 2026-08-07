@@ -49,9 +49,7 @@ async function send(action) {
       ipAddress: ipAddress
     })
   })
-
   .then(res => res.text())
-
   .then(message => {
     if (message.startsWith("Success")) {
       setStatus(message, "success");
@@ -60,11 +58,10 @@ async function send(action) {
       setStatus(message, "error");
     }
   })
-
   .catch(error => {
+    console.error(error);
     setStatus("Error: Could not connect. Try again.", "error");
   })
-
   .finally(() => {
     buttons.forEach(button => {
       button.disabled = false;
@@ -93,7 +90,6 @@ function updateClock() {
 }
 
 setInterval(updateClock, 1000);
-
 updateClock();
 
 function clockIn() {
