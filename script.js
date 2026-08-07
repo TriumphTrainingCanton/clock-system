@@ -1,5 +1,15 @@
 const url = "https://script.google.com/macros/s/AKfycbyQL6m6KbI3by8pzWayyvf4CA_zDnmAqJRwG9wZkcQWkJcPFZOMfC7IYyG1U4Rdye6SXA/exec";
 
+async function getPublicIP() {
+  try {
+    const response = await fetch("https://api.ipify.org?format=json");
+    const data = await response.json();
+    return data.ip;
+  } catch (error) {
+    console.error("Could not get IP address:", error);
+    return "Unable to Detect";
+  }
+}
 
 function setStatus(message, type) {
   const status = document.getElementById("status");
@@ -7,7 +17,7 @@ function setStatus(message, type) {
   status.innerText = message;
 }
 
-function send(action) {
+async function send(action) {
   const name = document.getElementById("name").value.trim();
   const pin = document.getElementById("pin").value.trim();
   const buttons = document.querySelectorAll("button");
@@ -28,26 +38,27 @@ function send(action) {
 
   setStatus("Processing...", "processing");
 
+  const ipAddress = await getPublicIP();
+
   fetch(url, {
     method: "POST",
     body: JSON.stringify({
       name: name,
       pin: pin,
-      action: action
+      action: action,
+      ipAddress: ipAddress
     })
   })
 
   .then(res => res.text())
 
   .then(message => {
-
     if (message.startsWith("Success")) {
       setStatus(message, "success");
       document.getElementById("pin").value = "";
     } else {
       setStatus(message, "error");
     }
-
   })
 
   .catch(error => {
@@ -55,22 +66,13 @@ function send(action) {
   })
 
   .finally(() => {
-
     buttons.forEach(button => {
       button.disabled = false;
     });
-
   });
-
-}
-
-
-function missedClockOut() {
-  send("Missed Clock Out");
 }
 
 function updateClock() {
-
   const now = new Date();
 
   document.getElementById("liveTime").innerText =
@@ -88,7 +90,6 @@ function updateClock() {
       day: "numeric",
       year: "numeric"
     });
-
 }
 
 setInterval(updateClock, 1000);
@@ -102,6 +103,7 @@ function clockIn() {
 function clockOut() {
   send("Clock Out");
 }
+
 function missedClockOut() {
   send("Missed Clock Out");
 }
