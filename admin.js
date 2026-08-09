@@ -1,7 +1,7 @@
 const url = "https://script.google.com/macros/s/AKfycbwidHd1FgdRr3fUx2uqAAbBE3tUFGcFKOxqzN-lI7HT_-EFtaeVHMtRITl9faMdmyiDLA/exec";
 
 const ADMIN_PIN = "9274";
-
+let allEmployees = [];
 
 // =====================================================
 // STATUS
@@ -530,6 +530,168 @@ setAdminStatus(
 
 function renderEmployees(employees){
 
+  allEmployees = employees;
+
+  displayEmployees(employees);
+
+}
+function displayEmployees(employees){
+
+
+const container =
+document.getElementById(
+"employeeManagementList"
+);
+
+
+
+if(!container) return;
+
+
+
+if(employees.length === 0){
+
+container.innerHTML =
+"No employees found.";
+
+return;
+
+}
+
+
+
+container.innerHTML = employees.map(employee=>{
+
+
+const status =
+employee.active
+?
+"Active"
+:
+"Inactive";
+
+
+const statusClass =
+employee.active
+?
+"employee-active"
+:
+"employee-inactive";
+
+
+
+const button = employee.active
+
+?
+
+`
+<button
+class="admin-reject"
+onclick="deactivateEmployee('${escapeQuotes(employee.name)}')">
+
+Remove
+
+</button>
+`
+
+:
+
+`
+
+<button
+class="admin-approve"
+onclick="reactivateEmployee('${escapeQuotes(employee.name)}')">
+
+Reactivate
+
+</button>
+
+`;
+
+
+
+return `
+
+
+<div class="employee-management-row">
+
+
+<div class="employee-management-info">
+
+
+<strong>
+
+${employee.name}
+
+</strong>
+
+
+<br>
+
+
+$${Number(employee.rate || 0).toFixed(2)}
+/ hr
+
+
+<br>
+
+
+<span class="${statusClass}">
+
+${status}
+
+</span>
+
+
+</div>
+
+
+
+<div class="employee-management-actions">
+
+
+<button
+class="admin-small-button"
+onclick="editEmployeeRate(
+'${escapeQuotes(employee.name)}',
+${Number(employee.rate || 0)}
+)">
+
+Edit Pay
+
+</button>
+
+
+
+<button
+class="admin-small-button"
+onclick="resetEmployeePin(
+'${escapeQuotes(employee.name)}'
+)">
+
+Reset PIN
+
+</button>
+
+
+
+${button}
+
+
+</div>
+
+
+</div>
+
+
+`;
+
+
+
+}).join("");
+
+}
+
 
 const container =
 document.getElementById(
@@ -716,8 +878,68 @@ ${actionButton}
 
 
 }
+function filterEmployees(){
 
 
+const search = 
+document
+.getElementById("employeeSearch")
+.value
+.toLowerCase();
+
+
+
+const filter =
+document
+.getElementById("employeeFilter")
+.value;
+
+
+
+const filtered =
+allEmployees.filter(employee=>{
+
+
+const matchesName =
+employee.name
+.toLowerCase()
+.includes(search);
+
+
+
+let matchesStatus = true;
+
+
+
+if(filter === "active"){
+
+matchesStatus =
+employee.active === true;
+
+}
+
+
+
+if(filter === "inactive"){
+
+matchesStatus =
+employee.active === false;
+
+}
+
+
+
+return matchesName && matchesStatus;
+
+
+});
+
+
+
+displayEmployees(filtered);
+
+
+}
 
 
 
