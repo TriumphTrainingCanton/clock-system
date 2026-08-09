@@ -1,37 +1,238 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Triumph Training Admin Dashboard</title>
-  <link rel="stylesheet" href="style.css">
-</head>
-<body>
-  <div class="portal">
-    <img src="logo.png" class="logo" alt="Triumph Training Logo">
-    <h1>Admin Dashboard</h1>
-    <p class="subtitle">Triumph Training Management View</p>
 
-    <div id="loginPanel" class="admin-login">
-      <input id="adminPin" type="password" inputmode="numeric" placeholder="Enter Admin PIN">
-      <button class="clock-in admin-unlock" onclick="unlockAdmin()">Unlock Dashboard</button>
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0">
+
+  <title>Triumph Training Admin Dashboard</title>
+
+  <link
+    rel="stylesheet"
+    href="style.css?v=5">
+</head>
+
+<body>
+
+  <div class="portal admin-portal">
+
+    <img
+      src="logo.png"
+      class="logo"
+      alt="Triumph Training Logo">
+
+    <h1>Admin Dashboard</h1>
+
+    <p class="subtitle">
+      Triumph Training Management View
+    </p>
+
+
+    <!-- ========================= -->
+    <!-- ADMIN LOGIN -->
+    <!-- ========================= -->
+
+    <div
+      id="loginPanel"
+      class="admin-login">
+
+      <input
+        id="adminPin"
+        type="password"
+        inputmode="numeric"
+        maxlength="4"
+        placeholder="Enter Admin PIN">
+
+      <button
+        class="clock-in admin-unlock"
+        onclick="unlockAdmin()">
+
+        Unlock Dashboard
+
+      </button>
+
     </div>
+
 
     <p id="status"></p>
 
-    <div id="dashboard" style="display: none;">
-      <div class="admin-section">
-        <h2>Currently Clocked In</h2>
-        <div id="clockedInList">Loading...</div>
+
+    <!-- ========================= -->
+    <!-- DASHBOARD -->
+    <!-- ========================= -->
+
+    <div
+      id="dashboard"
+      style="display: none;">
+
+
+      <!-- REFRESH -->
+
+      <div class="admin-actions">
+
+        <button
+          class="admin-small-button"
+          onclick="loadAdminDashboard()">
+
+          Refresh Dashboard
+
+        </button>
+
       </div>
 
+
+      <!-- ========================= -->
+      <!-- CURRENTLY CLOCKED IN -->
+      <!-- ========================= -->
+
       <div class="admin-section">
-        <h2>Admin Tools</h2>
-        <p>Weekly totals and monthly payroll are available in the connected Google Sheet.</p>
+
+        <h2>Currently Clocked In</h2>
+
+        <div id="clockedInList">
+          Loading...
+        </div>
+
       </div>
+
+
+      <!-- ========================= -->
+      <!-- ADD EMPLOYEE -->
+      <!-- ========================= -->
+
+      <div class="admin-section">
+
+        <h2>Add Employee</h2>
+
+        <p>
+          Create an employee with their hourly rate
+          and 4-digit PIN.
+        </p>
+
+
+        <input
+          id="newEmployeeName"
+          type="text"
+          placeholder="Employee Name">
+
+
+        <input
+          id="newEmployeeRate"
+          type="number"
+          min="0"
+          step="0.01"
+          placeholder="Hourly Rate">
+
+
+        <input
+          id="newEmployeePin"
+          type="password"
+          inputmode="numeric"
+          maxlength="4"
+          placeholder="4-digit PIN">
+
+
+        <button
+          class="clock-in employee-add-button"
+          onclick="addEmployee()">
+
+          Add Employee
+
+        </button>
+
+      </div>
+
+
+      <!-- ========================= -->
+      <!-- EMPLOYEE MANAGEMENT -->
+      <!-- ========================= -->
+
+      <div class="admin-section">
+
+        <h2>Employee Management</h2>
+
+        <p>
+          Edit pay, reset PINs, deactivate,
+          or reactivate employees.
+        </p>
+
+        <div id="employeeManagementList">
+          Loading employees...
+        </div>
+
+      </div>
+
+
+      <!-- ========================= -->
+      <!-- PAYROLL -->
+      <!-- ========================= -->
+
+      <div class="admin-section">
+
+        <h2>Payroll Snapshot</h2>
+
+        <div id="payrollSummary">
+          Loading...
+        </div>
+
+      </div>
+
+
+      <!-- ========================= -->
+      <!-- ANALYTICS -->
+      <!-- ========================= -->
+
+      <div class="admin-section">
+
+        <h2>Admin Analytics</h2>
+
+        <div id="analyticsBox">
+          Loading...
+        </div>
+
+      </div>
+
+
+      <!-- ========================= -->
+      <!-- MISSED PUNCHES -->
+      <!-- ========================= -->
+
+      <div class="admin-section">
+
+        <h2>Missed Punch Requests</h2>
+
+        <div id="missedPunchRequests">
+          Loading...
+        </div>
+
+      </div>
+
+
+      <!-- ========================= -->
+      <!-- RECENT PUNCHES -->
+      <!-- ========================= -->
+
+      <div class="admin-section">
+
+        <h2>Recent Punches</h2>
+
+        <div id="recentPunches">
+          Loading...
+        </div>
+
+      </div>
+
+
     </div>
+
   </div>
 
-  <script src="admin.js"></script>
+
+  <script src="admin.js?v=5"></script>
+
 </body>
+
 </html>
