@@ -12,10 +12,12 @@ function setAdminStatus(message, type) {
   const status =
     document.getElementById("status");
 
-  status.className = type;
+  if (!status) return;
 
+  status.className = type;
   status.innerText = message;
 }
+
 
 
 // =====================================================
@@ -46,8 +48,7 @@ function unlockAdmin() {
       "error"
     );
 
-    dashboard.style.display =
-      "none";
+    dashboard.style.display = "none";
 
     return;
   }
@@ -59,23 +60,24 @@ function unlockAdmin() {
   );
 
 
-  loginPanel.style.display =
-    "none";
+  loginPanel.style.display = "none";
 
 
-  dashboard.style.display =
-    "block";
+  dashboard.style.display = "block";
 
 
   loadAdminDashboard();
+
 }
 
 
+
 // =====================================================
-// LOAD ADMIN DASHBOARD
+// LOAD DASHBOARD
 // =====================================================
 
 async function loadAdminDashboard() {
+
 
   setAdminStatus(
     "Refreshing dashboard...",
@@ -85,50 +87,54 @@ async function loadAdminDashboard() {
 
   try {
 
+
     const response =
       await fetch(url, {
 
-        method: "POST",
+        method:"POST",
 
         body: JSON.stringify({
 
           action:
-            "Get Admin Dashboard",
+          "Get Admin Dashboard",
 
           adminPin:
-            ADMIN_PIN
+          ADMIN_PIN
 
         })
 
       });
 
 
+
     const text =
       await response.text();
 
 
+
     if (
-      text.trim().startsWith("<!DOCTYPE html") ||
-      text.trim().startsWith("<html")
+      text.startsWith("<!DOCTYPE html") ||
+      text.startsWith("<html")
     ) {
 
-      console.error(
-        "Unexpected HTML response:",
-        text
-      );
-
-
       setAdminStatus(
-        "Error: Backend deployment is not responding correctly.",
+        "Error: Backend returned invalid response.",
         "error"
       );
 
       return;
+
     }
+
 
 
     const data =
       JSON.parse(text);
+
+
+
+    updateDashboardCards(data);
+
 
 
     renderClockedIn(
@@ -161,18 +167,18 @@ async function loadAdminDashboard() {
     );
 
 
+
     setAdminStatus(
       "Dashboard updated.",
       "success"
     );
 
 
-  } catch (error) {
 
-    console.error(
-      "Dashboard error:",
-      error
-    );
+  } catch(error) {
+
+
+    console.error(error);
 
 
     setAdminStatus(
@@ -180,885 +186,1299 @@ async function loadAdminDashboard() {
       "error"
     );
 
+
   }
+
 }
 
 
+
 // =====================================================
-// CURRENTLY CLOCKED IN
+// TOP SUMMARY CARDS
 // =====================================================
 
-function renderClockedIn(employees) {
+function updateDashboardCards(data) {
 
-  const container =
+
+  const stats =
+    data.analytics || {};
+
+
+
+  const clocked =
     document.getElementById(
-      "clockedInList"
+      "clockedCount"
     );
 
 
-  if (employees.length === 0) {
+  const employees =
+    document.getElementById(
+      "employeeCount"
+    );
 
-    container.innerHTML =
-      "No employees currently clocked in.";
 
-    return;
+  const requests =
+    document.getElementById(
+      "requestCount"
+    );
+
+
+  const pay =
+    document.getElementById(
+      "projectedPay"
+    );
+
+
+
+  if(clocked){
+
+    clocked.innerText =
+      stats.activeCount || 0;
+
   }
 
 
-  container.innerHTML =
-    employees
-      .map(employee => {
 
-        return `
-          <div class="admin-row">
+  if(employees){
 
-            <span>
-              <strong>
-                ${employee.name}
-              </strong>
-            </span>
+    employees.innerText =
+      stats.totalEmployees || 0;
 
-            <span>
-              ${employee.clockIn}
-            </span>
+  }
 
-          </div>
-        `;
 
-      })
-      .join("");
+
+  if(requests){
+
+    requests.innerText =
+      stats.pendingMissedRequests || 0;
+
+  }
+
+
+
+  if(pay){
+
+    pay.innerText =
+      "$" +
+      Number(
+        stats.totalProjectedPay || 0
+      ).toFixed(2);
+
+  }
+
 }
 
 
+
 // =====================================================
+// CLOCKED IN LIST
+// =====================================================
+
+function renderClockedIn(employees){
+
+
+const container =
+document.getElementById(
+"clockedInList"
+);
+
+
+
+if(!container) return;
+
+
+
+if(employees.length===0){
+
+container.innerHTML =
+`
+<div class="empty-state">
+No employees currently clocked in.
+</div>
+`;
+
+return;
+
+}
+
+
+
+container.innerHTML =
+
+employees.map(employee=>{
+
+
+return `
+
+<div class="admin-row">
+
+<div>
+
+<strong>
+${employee.name}
+</strong>
+
+<br>
+
+<span>
+Clocked in:
+${employee.clockIn}
+</span>
+
+</div>
+
+
+<span class="employee-active">
+ACTIVE
+</span>
+
+
+</div>
+
+`;
+
+}).join("");
+
+}// =====================================================
 // ADD EMPLOYEE
 // =====================================================
 
-async function addEmployee() {
-
-  const employeeName =
-    document
-      .getElementById(
-        "newEmployeeName"
-      )
-      .value
-      .trim();
+async function addEmployee(){
 
 
-  const hourlyRate =
-    document
-      .getElementById(
-        "newEmployeeRate"
-      )
-      .value
-      .trim();
+const employeeName =
+document
+.getElementById("newEmployeeName")
+.value
+.trim();
 
 
-  const employeePin =
-    document
-      .getElementById(
-        "newEmployeePin"
-      )
-      .value
-      .trim();
+
+const hourlyRate =
+document
+.getElementById("newEmployeeRate")
+.value
+.trim();
 
 
-  if (employeeName === "") {
 
-    setAdminStatus(
-      "Error: Enter an employee name.",
-      "error"
-    );
-
-    return;
-  }
+const employeePin =
+document
+.getElementById("newEmployeePin")
+.value
+.trim();
 
 
-  if (
-    hourlyRate === "" ||
-    Number(hourlyRate) < 0
-  ) {
-
-    setAdminStatus(
-      "Error: Enter a valid hourly rate.",
-      "error"
-    );
-
-    return;
-  }
 
 
-  if (!/^\d{4}$/.test(employeePin)) {
+if(employeeName===""){
 
-    setAdminStatus(
-      "Error: PIN must be exactly 4 digits.",
-      "error"
-    );
+setAdminStatus(
+"Error: Enter an employee name.",
+"error"
+);
 
-    return;
-  }
+return;
 
-
-  setAdminStatus(
-    "Adding employee...",
-    "processing"
-  );
-
-
-  try {
-
-    const response =
-      await fetch(url, {
-
-        method: "POST",
-
-        body: JSON.stringify({
-
-          action:
-            "Add Employee",
-
-          adminPin:
-            ADMIN_PIN,
-
-          employeeName:
-            employeeName,
-
-          hourlyRate:
-            hourlyRate,
-
-          employeePin:
-            employeePin
-
-        })
-
-      });
-
-
-    const message =
-      await response.text();
-
-
-    if (
-      message.startsWith("Success")
-    ) {
-
-      setAdminStatus(
-        message,
-        "success"
-      );
-
-
-      document
-        .getElementById(
-          "newEmployeeName"
-        )
-        .value = "";
-
-
-      document
-        .getElementById(
-          "newEmployeeRate"
-        )
-        .value = "";
-
-
-      document
-        .getElementById(
-          "newEmployeePin"
-        )
-        .value = "";
-
-
-      loadAdminDashboard();
-
-
-    } else {
-
-      setAdminStatus(
-        message,
-        "error"
-      );
-
-    }
-
-
-  } catch (error) {
-
-    console.error(error);
-
-
-    setAdminStatus(
-      "Error: Could not add employee.",
-      "error"
-    );
-
-  }
 }
 
 
-// =====================================================
-// EMPLOYEE MANAGEMENT LIST
-// =====================================================
 
-function renderEmployees(employees) {
+if(
+hourlyRate==="" ||
+Number(hourlyRate)<0
+){
 
-  const container =
-    document.getElementById(
-      "employeeManagementList"
-    );
+setAdminStatus(
+"Error: Enter a valid hourly rate.",
+"error"
+);
 
+return;
 
-  if (employees.length === 0) {
-
-    container.innerHTML =
-      "No employees found.";
-
-    return;
-  }
-
-
-  container.innerHTML =
-    employees
-      .map(employee => {
-
-        const statusText =
-          employee.active
-            ? "Active"
-            : "Inactive";
-
-
-        const statusClass =
-          employee.active
-            ? "employee-active"
-            : "employee-inactive";
-
-
-        const activeButton =
-          employee.active
-
-            ? `
-              <button
-                class="admin-reject"
-                onclick="deactivateEmployee('${escapeQuotes(employee.name)}')">
-
-                Remove
-
-              </button>
-            `
-
-            : `
-              <button
-                class="admin-approve"
-                onclick="reactivateEmployee('${escapeQuotes(employee.name)}')">
-
-                Reactivate
-
-              </button>
-            `;
-
-
-        return `
-
-          <div class="employee-management-row">
-
-            <div class="employee-management-info">
-
-              <strong>
-                ${employee.name}
-              </strong>
-
-              <br>
-
-              $${Number(
-                employee.rate || 0
-              ).toFixed(2)}/hr
-
-              <br>
-
-              <span class="${statusClass}">
-                ${statusText}
-              </span>
-
-            </div>
-
-
-            <div class="employee-management-actions">
-
-              <button
-                class="admin-small-button"
-                onclick="editEmployeeRate(
-                  '${escapeQuotes(employee.name)}',
-                  ${Number(employee.rate || 0)}
-                )">
-
-                Edit Pay
-
-              </button>
-
-
-              <button
-                class="admin-small-button"
-                onclick="resetEmployeePin(
-                  '${escapeQuotes(employee.name)}'
-                )">
-
-                Reset PIN
-
-              </button>
-
-
-              ${activeButton}
-
-            </div>
-
-          </div>
-
-        `;
-
-      })
-      .join("");
 }
 
 
+
+
+if(!/^\d{4}$/.test(employeePin)){
+
+setAdminStatus(
+"Error: PIN must be exactly 4 digits.",
+"error"
+);
+
+return;
+
+}
+
+
+
+setAdminStatus(
+"Adding employee...",
+"processing"
+);
+
+
+
+try{
+
+
+const response =
+await fetch(url,{
+
+method:"POST",
+
+body:JSON.stringify({
+
+action:
+"Add Employee",
+
+adminPin:
+ADMIN_PIN,
+
+employeeName:
+employeeName,
+
+hourlyRate:
+hourlyRate,
+
+employeePin:
+employeePin
+
+})
+
+});
+
+
+
+const message =
+await response.text();
+
+
+
+if(message.startsWith("Success")){
+
+
+setAdminStatus(
+message,
+"success"
+);
+
+
+
+document.getElementById(
+"newEmployeeName"
+).value="";
+
+
+
+document.getElementById(
+"newEmployeeRate"
+).value="";
+
+
+
+document.getElementById(
+"newEmployeePin"
+).value="";
+
+
+
+loadAdminDashboard();
+
+
+
+}
+else{
+
+
+setAdminStatus(
+message,
+"error"
+);
+
+
+}
+
+
+}
+catch(error){
+
+
+console.error(error);
+
+
+setAdminStatus(
+"Error: Could not add employee.",
+"error"
+);
+
+
+}
+
+
+}
+
+
+
+
 // =====================================================
-// EDIT HOURLY RATE
+// EMPLOYEE MANAGEMENT
 // =====================================================
+
+function renderEmployees(employees){
+
+
+const container =
+document.getElementById(
+"employeeManagementList"
+);
+
+
+
+if(!container) return;
+
+
+
+if(employees.length===0){
+
+
+container.innerHTML =
+"No employees found.";
+
+return;
+
+}
+
+
+
+
+container.innerHTML =
+
+
+employees.map(employee=>{
+
+
+
+const status =
+employee.active
+?
+"Active"
+:
+"Inactive";
+
+
+
+const statusClass =
+employee.active
+?
+"employee-active"
+:
+"employee-inactive";
+
+
+
+const actionButton =
+
+employee.active
+
+?
+
+`
+<button
+class="admin-reject"
+onclick="deactivateEmployee('${escapeQuotes(employee.name)}')">
+
+Remove
+
+</button>
+`
+
+:
+
+`
+
+<button
+class="admin-approve"
+onclick="reactivateEmployee('${escapeQuotes(employee.name)}')">
+
+Reactivate
+
+</button>
+
+`;
+
+
+
+
+
+return `
+
+
+<div class="employee-management-row">
+
+
+<div class="employee-management-info">
+
+
+<strong>
+
+${employee.name}
+
+</strong>
+
+
+
+<br>
+
+
+<span>
+
+$${Number(
+employee.rate || 0
+).toFixed(2)}
+
+/ hr
+
+</span>
+
+
+
+<br>
+
+
+
+<span class="${statusClass}">
+
+${status}
+
+</span>
+
+
+</div>
+
+
+
+
+<div class="employee-management-actions">
+
+
+<button
+class="admin-small-button"
+
+onclick="editEmployeeRate(
+'${escapeQuotes(employee.name)}',
+${Number(employee.rate || 0)}
+)">
+
+Edit Pay
+
+</button>
+
+
+
+
+
+<button
+class="admin-small-button"
+
+onclick="resetEmployeePin(
+'${escapeQuotes(employee.name)}'
+)">
+
+Reset PIN
+
+</button>
+
+
+
+
+
+${actionButton}
+
+
+
+</div>
+
+
+
+</div>
+
+
+`;
+
+
+
+}).join("");
+
+
+
+}
+
+
+
+
+
+// =====================================================
+// EDIT PAY
+// =====================================================
+
 
 async function editEmployeeRate(
-  employeeName,
-  currentRate
-) {
-
-  const newRate =
-    prompt(
-      "Enter the new hourly rate for " +
-      employeeName +
-      ":",
-      currentRate
-    );
+employeeName,
+currentRate
+){
 
 
-  if (newRate === null) {
-    return;
-  }
+
+const newRate =
+prompt(
+
+"Enter new hourly rate for "
++
+employeeName,
+
+currentRate
+
+);
 
 
-  if (
-    newRate.trim() === "" ||
-    Number(newRate) < 0 ||
-    isNaN(Number(newRate))
-  ) {
 
-    setAdminStatus(
-      "Error: Enter a valid hourly rate.",
-      "error"
-    );
+if(newRate===null){
 
-    return;
-  }
+return;
 
-
-  await updateEmployee(
-    employeeName,
-    newRate,
-    ""
-  );
 }
 
 
+
+
+if(
+newRate.trim()==="" ||
+isNaN(Number(newRate)) ||
+Number(newRate)<0
+
+){
+
+setAdminStatus(
+"Error: Invalid hourly rate.",
+"error"
+);
+
+return;
+
+}
+
+
+
+updateEmployee(
+
+employeeName,
+
+newRate,
+
+""
+
+);
+
+
+
+}
+
+
+
+
+
 // =====================================================
-// RESET EMPLOYEE PIN
+// RESET PIN
 // =====================================================
+
 
 async function resetEmployeePin(
-  employeeName
-) {
-
-  const newPin =
-    prompt(
-      "Enter a new 4-digit PIN for " +
-      employeeName +
-      ":"
-    );
+employeeName
+){
 
 
-  if (newPin === null) {
-    return;
-  }
+
+const newPin =
+prompt(
+
+"Enter new 4-digit PIN for "
++
+employeeName
+
+);
 
 
-  if (
-    !/^\d{4}$/.test(
-      newPin.trim()
-    )
-  ) {
 
-    setAdminStatus(
-      "Error: PIN must be exactly 4 digits.",
-      "error"
-    );
+if(newPin===null){
 
-    return;
-  }
+return;
 
-
-  await updateEmployee(
-    employeeName,
-    "",
-    newPin.trim()
-  );
 }
+
+
+
+if(!/^\d{4}$/.test(newPin.trim())){
+
+
+setAdminStatus(
+"Error: PIN must be exactly 4 digits.",
+"error"
+);
+
+
+return;
+
+}
+
+
+
+
+updateEmployee(
+
+employeeName,
+
+"",
+
+newPin.trim()
+
+);
+
+
+
+}
+
+
 
 
 // =====================================================
 // UPDATE EMPLOYEE
 // =====================================================
 
+
 async function updateEmployee(
-  employeeName,
-  hourlyRate,
-  employeePin
-) {
-
-  setAdminStatus(
-    "Updating employee...",
-    "processing"
-  );
+employeeName,
+hourlyRate,
+employeePin
+){
 
 
-  try {
-
-    const response =
-      await fetch(url, {
-
-        method: "POST",
-
-        body: JSON.stringify({
-
-          action:
-            "Update Employee",
-
-          adminPin:
-            ADMIN_PIN,
-
-          employeeName:
-            employeeName,
-
-          hourlyRate:
-            hourlyRate,
-
-          employeePin:
-            employeePin
-
-        })
-
-      });
+setAdminStatus(
+"Updating employee...",
+"processing"
+);
 
 
-    const message =
-      await response.text();
+
+try{
 
 
-    if (
-      message.startsWith("Success")
-    ) {
+const response =
+await fetch(url,{
 
-      setAdminStatus(
-        message,
-        "success"
-      );
+method:"POST",
+
+body:JSON.stringify({
+
+action:
+"Update Employee",
+
+adminPin:
+ADMIN_PIN,
+
+employeeName:
+employeeName,
+
+hourlyRate:
+hourlyRate,
+
+employeePin:
+employeePin
+
+})
+
+});
 
 
-      loadAdminDashboard();
+
+const message =
+await response.text();
 
 
-    } else {
 
-      setAdminStatus(
-        message,
-        "error"
-      );
-
-    }
+if(message.startsWith("Success")){
 
 
-  } catch (error) {
+setAdminStatus(
+message,
+"success"
+);
 
-    console.error(error);
 
 
-    setAdminStatus(
-      "Error: Could not update employee.",
-      "error"
-    );
+loadAdminDashboard();
 
-  }
+
+}
+
+else{
+
+
+setAdminStatus(
+message,
+"error"
+);
+
+
 }
 
 
+
+}
+
+catch(error){
+
+
+console.error(error);
+
+
+setAdminStatus(
+"Error: Could not update employee.",
+"error"
+);
+
+
+}
+
+
+
+}
+
+
+
+
 // =====================================================
-// DEACTIVATE EMPLOYEE
+// REMOVE EMPLOYEE
 // =====================================================
+
 
 async function deactivateEmployee(
-  employeeName
-) {
-
-  const confirmed =
-    confirm(
-      "Remove " +
-      employeeName +
-      " from the active employee list?"
-    );
+employeeName
+){
 
 
-  if (!confirmed) {
-    return;
-  }
+const confirmRemove =
+confirm(
+
+"Remove "
++
+employeeName
++
+" from active employees?"
+
+);
 
 
-  await changeEmployeeStatus(
-    "Deactivate Employee",
-    employeeName
-  );
+
+if(!confirmRemove){
+
+return;
+
 }
+
+
+
+changeEmployeeStatus(
+"Deactivate Employee",
+employeeName
+);
+
+
+
+}
+
+
 
 
 // =====================================================
 // REACTIVATE EMPLOYEE
 // =====================================================
 
-async function reactivateEmployee(
-  employeeName
-) {
 
-  await changeEmployeeStatus(
-    "Reactivate Employee",
-    employeeName
-  );
+async function reactivateEmployee(
+employeeName
+){
+
+
+changeEmployeeStatus(
+"Reactivate Employee",
+employeeName
+);
+
+
 }
 
 
+
+
+
 // =====================================================
-// CHANGE EMPLOYEE STATUS
+// CHANGE STATUS
 // =====================================================
+
 
 async function changeEmployeeStatus(
-  action,
-  employeeName
-) {
-
-  setAdminStatus(
-    "Updating employee status...",
-    "processing"
-  );
+action,
+employeeName
+){
 
 
-  try {
-
-    const response =
-      await fetch(url, {
-
-        method: "POST",
-
-        body: JSON.stringify({
-
-          action:
-            action,
-
-          adminPin:
-            ADMIN_PIN,
-
-          employeeName:
-            employeeName
-
-        })
-
-      });
+setAdminStatus(
+"Updating employee status...",
+"processing"
+);
 
 
-    const message =
-      await response.text();
+
+try{
 
 
-    if (
-      message.startsWith("Success")
-    ) {
+const response =
+await fetch(url,{
 
-      setAdminStatus(
-        message,
-        "success"
-      );
+method:"POST",
 
+body:JSON.stringify({
 
-      loadAdminDashboard();
+action:
+action,
 
+adminPin:
+ADMIN_PIN,
 
-    } else {
+employeeName:
+employeeName
 
-      setAdminStatus(
-        message,
-        "error"
-      );
+})
 
-    }
+});
 
 
-  } catch (error) {
 
-    console.error(error);
+const message =
+await response.text();
 
 
-    setAdminStatus(
-      "Error: Could not update employee status.",
-      "error"
-    );
 
-  }
+if(message.startsWith("Success")){
+
+
+setAdminStatus(
+message,
+"success"
+);
+
+
+
+loadAdminDashboard();
+
+
+
+}
+
+else{
+
+
+setAdminStatus(
+message,
+"error"
+);
+
+
 }
 
 
-// =====================================================
+
+}
+
+catch(error){
+
+
+console.error(error);
+
+
+setAdminStatus(
+"Error updating employee.",
+"error"
+);
+
+
+}
+
+
+}// =====================================================
 // PAYROLL
 // =====================================================
 
-function renderPayroll(items) {
-
-  const container =
-    document.getElementById(
-      "payrollSummary"
-    );
+function renderPayroll(items){
 
 
-  if (items.length === 0) {
-
-    container.innerHTML =
-      "No payroll data yet.";
-
-    return;
-  }
+const container =
+document.getElementById(
+"payrollSummary"
+);
 
 
-  container.innerHTML =
-    items
-      .map(item => `
 
-        <div class="admin-row">
+if(!container) return;
 
-          <span>
-            ${item.name}
-          </span>
 
-          <span>
 
-            ${Number(
-              item.hours || 0
-            ).toFixed(2)} hrs
+if(items.length===0){
 
-            /
 
-            $${Number(
-              item.pay || 0
-            ).toFixed(2)}
+container.innerHTML =
+"No payroll data yet.";
 
-          </span>
+return;
 
-        </div>
-
-      `)
-      .join("");
 }
+
+
+
+
+container.innerHTML =
+
+
+items.map(item=>{
+
+
+return `
+
+<div class="admin-row">
+
+
+<div>
+
+<strong>
+${item.name}
+</strong>
+
+</div>
+
+
+
+<div>
+
+${Number(
+item.hours || 0
+).toFixed(2)}
+hrs
+
+&nbsp;
+
+|
+
+&nbsp;
+
+$${Number(
+item.pay || 0
+).toFixed(2)}
+
+</div>
+
+
+</div>
+
+`;
+
+
+
+}).join("");
+
+
+
+}
+
+
+
 
 
 // =====================================================
 // ANALYTICS
 // =====================================================
 
-function renderAnalytics(data) {
-
-  const container =
-    document.getElementById(
-      "analyticsBox"
-    );
+function renderAnalytics(data){
 
 
-  container.innerHTML = `
-
-    <div class="admin-row">
-
-      <span>
-        Total Active Employees
-      </span>
-
-      <span>
-        ${data.totalEmployees || 0}
-      </span>
-
-    </div>
+const container =
+document.getElementById(
+"analyticsBox"
+);
 
 
-    <div class="admin-row">
 
-      <span>
-        Currently Clocked In
-      </span>
-
-      <span>
-        ${data.activeCount || 0}
-      </span>
-
-    </div>
+if(!container) return;
 
 
-    <div class="admin-row">
 
-      <span>
-        Completed Shifts
-      </span>
-
-      <span>
-        ${data.completedShifts || 0}
-      </span>
-
-    </div>
+container.innerHTML = `
 
 
-    <div class="admin-row">
+<div class="admin-row">
 
-      <span>
-        Open Missed Requests
-      </span>
-
-      <span>
-        ${data.pendingMissedRequests || 0}
-      </span>
-
-    </div>
+<span>
+Active Employees
+</span>
 
 
-    <div class="admin-row">
+<strong>
+${data.totalEmployees || 0}
+</strong>
 
-      <span>
-        Total Projected Pay
-      </span>
+</div>
 
-      <span>
 
-        $${Number(
-          data.totalProjectedPay || 0
-        ).toFixed(2)}
 
-      </span>
 
-    </div>
+<div class="admin-row">
 
-  `;
+<span>
+Currently Clocked In
+</span>
+
+
+<strong>
+${data.activeCount || 0}
+</strong>
+
+</div>
+
+
+
+
+<div class="admin-row">
+
+<span>
+Completed Shifts
+</span>
+
+
+<strong>
+${data.completedShifts || 0}
+</strong>
+
+</div>
+
+
+
+
+<div class="admin-row">
+
+<span>
+Pending Requests
+</span>
+
+
+<strong>
+${data.pendingMissedRequests || 0}
+</strong>
+
+</div>
+
+
+
+
+<div class="admin-row">
+
+<span>
+Projected Payroll
+</span>
+
+
+<strong>
+
+$${Number(
+data.totalProjectedPay || 0
+).toFixed(2)}
+
+</strong>
+
+</div>
+
+
+
+`;
+
+
+
 }
 
 
+
+
+
 // =====================================================
-// MISSED PUNCHES
+// MISSED PUNCH REQUESTS
 // =====================================================
 
-function renderMissedPunches(items) {
-
-  const container =
-    document.getElementById(
-      "missedPunchRequests"
-    );
+function renderMissedPunches(items){
 
 
-  if (items.length === 0) {
-
-    container.innerHTML =
-      "No missed punch requests.";
-
-    return;
-  }
+const container =
+document.getElementById(
+"missedPunchRequests"
+);
 
 
-  container.innerHTML =
-    items
-      .map(request => {
 
-        const pending =
-          String(
-            request.status ||
-            "Pending"
-          )
-            .toLowerCase() ===
-          "pending";
+if(!container) return;
 
 
-        return `
 
-          <div class="request-card">
-
-            <strong>
-              ${request.name}
-            </strong>
-
-            <br>
-
-            ${request.type || ""}
-
-            <br>
-
-            ${request.requestedDate || ""}
-            ${request.requestedTime || ""}
-
-            <br>
-
-            Status:
-            <strong>
-              ${request.status || "Pending"}
-            </strong>
+if(items.length===0){
 
 
-            ${
-              pending
+container.innerHTML =
+"No missed punch requests.";
 
-                ? `
+return;
 
-                  <div class="request-actions">
-
-                    <button
-                      class="admin-approve"
-                      onclick="updateMissedPunchStatus(
-                        ${request.rowNumber},
-                        'Approved'
-                      )">
-
-                      Approve
-
-                    </button>
-
-
-                    <button
-                      class="admin-reject"
-                      onclick="updateMissedPunchStatus(
-                        ${request.rowNumber},
-                        'Rejected'
-                      )">
-
-                      Reject
-
-                    </button>
-
-                  </div>
-
-                `
-
-                : ""
-            }
-
-          </div>
-
-        `;
-
-      })
-      .join("");
 }
+
+
+
+
+
+container.innerHTML =
+
+
+items.map(request=>{
+
+
+const pending =
+
+String(
+request.status || "Pending"
+)
+.toLowerCase()
+===
+"pending";
+
+
+
+
+return `
+
+
+<div class="request-card">
+
+
+<strong>
+${request.name}
+</strong>
+
+
+<br>
+
+
+${request.type || ""}
+
+
+<br>
+
+
+${request.requestedDate || ""}
+
+&nbsp;
+
+${request.requestedTime || ""}
+
+
+
+<br>
+
+
+Status:
+
+<strong>
+${request.status || "Pending"}
+</strong>
+
+
+
+${
+
+pending
+
+?
+
+`
+
+<div class="request-actions">
+
+
+<button
+
+class="admin-approve"
+
+onclick="updateMissedPunchStatus(
+${request.rowNumber},
+'Approved'
+)">
+
+Approve
+
+</button>
+
+
+
+<button
+
+class="admin-reject"
+
+onclick="updateMissedPunchStatus(
+${request.rowNumber},
+'Rejected'
+)">
+
+Reject
+
+</button>
+
+
+</div>
+
+`
+
+:
+
+""
+
+}
+
+
+
+</div>
+
+
+`;
+
+
+
+}).join("");
+
+
+
+}
+
+
+
+
+
 
 
 // =====================================================
@@ -1066,147 +1486,231 @@ function renderMissedPunches(items) {
 // =====================================================
 
 async function updateMissedPunchStatus(
-  rowNumber,
-  status
-) {
-
-  setAdminStatus(
-    "Updating request...",
-    "processing"
-  );
+rowNumber,
+status
+){
 
 
-  try {
 
-    const response =
-      await fetch(url, {
-
-        method: "POST",
-
-        body: JSON.stringify({
-
-          action:
-            "Update Missed Punch Status",
-
-          adminPin:
-            ADMIN_PIN,
-
-          rowNumber:
-            rowNumber,
-
-          status:
-            status
-
-        })
-
-      });
+setAdminStatus(
+"Updating request...",
+"processing"
+);
 
 
-    const message =
-      await response.text();
+
+try{
 
 
-    if (
-      message.startsWith("Success")
-    ) {
+const response =
+await fetch(url,{
 
-      setAdminStatus(
-        message,
-        "success"
-      );
+method:"POST",
 
+body:JSON.stringify({
 
-      loadAdminDashboard();
+action:
+"Update Missed Punch Status",
 
+adminPin:
+ADMIN_PIN,
 
-    } else {
+rowNumber:
+rowNumber,
 
-      setAdminStatus(
-        message,
-        "error"
-      );
+status:
+status
 
-    }
+})
 
-
-  } catch (error) {
-
-    console.error(error);
+});
 
 
-    setAdminStatus(
-      "Error: Could not update request.",
-      "error"
-    );
 
-  }
+const message =
+await response.text();
+
+
+
+if(message.startsWith("Success")){
+
+
+setAdminStatus(
+message,
+"success"
+);
+
+
+
+loadAdminDashboard();
+
+
+
 }
+
+else{
+
+
+setAdminStatus(
+message,
+"error"
+);
+
+
+}
+
+
+
+}
+
+catch(error){
+
+
+console.error(error);
+
+
+
+setAdminStatus(
+"Error: Could not update request.",
+"error"
+);
+
+
+}
+
+
+}
+
+
+
+
+
 
 
 // =====================================================
 // RECENT PUNCHES
 // =====================================================
 
-function renderRecentPunches(items) {
-
-  const container =
-    document.getElementById(
-      "recentPunches"
-    );
+function renderRecentPunches(items){
 
 
-  if (items.length === 0) {
-
-    container.innerHTML =
-      "No punches found.";
-
-    return;
-  }
+const container =
+document.getElementById(
+"recentPunches"
+);
 
 
-  container.innerHTML =
-    items
-      .map(item => `
 
-        <div class="admin-row">
-
-          <span>
-
-            <strong>
-              ${item.name}
-            </strong>
-
-            <br>
-
-            ${item.date || ""}
-
-          </span>
+if(!container) return;
 
 
-          <span>
 
-            ${item.clockIn || ""}
+if(items.length===0){
 
-            →
 
-            ${item.clockOut || "Open"}
+container.innerHTML =
+"No recent punches.";
 
-          </span>
+return;
 
-        </div>
-
-      `)
-      .join("");
 }
 
 
+
+
+container.innerHTML =
+
+
+items.map(item=>{
+
+
+return `
+
+
+<div class="admin-row">
+
+
+<div>
+
+
+<strong>
+${item.name}
+</strong>
+
+
+<br>
+
+
+${item.date || ""}
+
+
+</div>
+
+
+
+
+<div>
+
+
+${item.clockIn || ""}
+
+
+&nbsp; → &nbsp;
+
+
+${item.clockOut || "Open"}
+
+
+<br>
+
+
+${Number(
+item.hours || 0
+).toFixed(2)}
+hrs
+
+
+</div>
+
+
+
+</div>
+
+
+`;
+
+
+
+}).join("");
+
+
+
+}
+
+
+
+
+
+
+
 // =====================================================
-// SAFE NAME FOR ONCLICK
+// ESCAPE QUOTES
 // =====================================================
 
-function escapeQuotes(text) {
+function escapeQuotes(text){
 
-  return String(text)
-    .replace(/\\/g, "\\\\")
-    .replace(/'/g, "\\'");
+
+return String(text)
+
+.replace(
+/\\/g,
+"\\\\"
+)
+
+.replace(
+/'/g,
+"\\'"
+);
+
+
 }
