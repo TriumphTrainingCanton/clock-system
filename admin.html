@@ -314,6 +314,37 @@ or reactivate employees.
 
 
 
+<div class="employee-tools">
+
+  <input
+    id="employeeSearch"
+    type="text"
+    placeholder="Search employee..."
+    oninput="filterEmployees()">
+
+
+  <select
+    id="employeeFilter"
+    onchange="filterEmployees()">
+
+    <option value="all">
+      All Employees
+    </option>
+
+    <option value="active">
+      Active Employees
+    </option>
+
+    <option value="inactive">
+      Inactive Employees
+    </option>
+
+  </select>
+
+
+</div>
+
+
 <div id="employeeManagementList">
 
 Loading employees...
