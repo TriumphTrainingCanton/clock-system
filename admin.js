@@ -1,6 +1,6 @@
 const url = "https://script.google.com/macros/s/AKfycbwidHd1FgdRr3fUx2uqAAbBE3tUFGcFKOxqzN-lI7HT_-EFtaeVHMtRITl9faMdmyiDLA/exec";
 
-const ADMIN_PIN = "9274";
+const ADMIN_PIN = "1976";
 let allEmployees = [];
 
 // =====================================================
@@ -744,7 +744,6 @@ employee.active === false;
 
 
 return matchesName && matchesStatus;
-
 
 });
 
