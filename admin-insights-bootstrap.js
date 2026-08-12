@@ -1,5 +1,6 @@
 // Loads admin insights after the core dashboard is ready.
-// This keeps Employee Details and Activity Log completely out of the normal refresh payload.
+// This keeps Employee Details, Activity Log, payroll filters, and missed-punch history
+// out of the normal dashboard payload unless the admin asks for them.
 
 (function () {
   if (document.getElementById("adminInsightsScript")) return;
@@ -8,6 +9,11 @@
   css.rel = "stylesheet";
   css.href = "admin-insights.css?v=1";
   document.head.appendChild(css);
+
+  const finalCss = document.createElement("link");
+  finalCss.rel = "stylesheet";
+  finalCss.href = "admin-final-features.css?v=1";
+  document.head.appendChild(finalCss);
 
   const headerActions = document.querySelector(".dashboard-header-actions");
   if (headerActions && !document.getElementById("systemHealthBadge")) {
@@ -44,5 +50,12 @@
   const script = document.createElement("script");
   script.id = "adminInsightsScript";
   script.src = "admin-insights.js?v=1";
+  script.onload = () => {
+    if (document.getElementById("adminFinalFeaturesScript")) return;
+    const finalScript = document.createElement("script");
+    finalScript.id = "adminFinalFeaturesScript";
+    finalScript.src = "admin-final-features.js?v=1";
+    document.body.appendChild(finalScript);
+  };
   document.body.appendChild(script);
 })();
