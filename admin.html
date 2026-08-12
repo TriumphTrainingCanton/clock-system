@@ -1,489 +1,170 @@
 <!DOCTYPE html>
 <html lang="en">
-
 <head>
-
-<meta charset="UTF-8">
-
-<meta
-name="viewport"
-content="width=device-width, initial-scale=1.0">
-
-<title>
-Triumph Training Admin Dashboard
-</title>
-
-
-<link
-rel="stylesheet"
-href="style.css?v=8">
-
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#0f172a">
+  <title>Triumph Training Admin Dashboard</title>
+  <link rel="stylesheet" href="style.css?v=8">
 </head>
-
-
 <body>
-
-
-<div class="portal admin-portal">
-
-
-<img
-src="logo.png"
-class="logo"
-alt="Triumph Training Logo">
-
-
-<h1>
-Admin Dashboard
-</h1>
-
-
-<p class="subtitle">
-Triumph Training Management View
-</p>
-
-
-
-<!-- ========================= -->
-<!-- ADMIN LOGIN -->
-<!-- ========================= -->
-
-
-<div
-id="loginPanel"
-class="admin-login">
-
-
-<input
-id="adminPin"
-type="password"
-inputmode="numeric"
-maxlength="4"
-placeholder="Enter Admin PIN"
-aria-label="Admin PIN"
-autocomplete="current-password">
-
-
-<button
-type="button"
-class="clock-in admin-unlock"
-onclick="unlockAdmin()">
-
-Unlock Dashboard
-
-</button>
-
-
-</div>
-
-
-
-<p id="status" role="status" aria-live="polite"></p>
-
-
-
-
-
-<!-- ========================= -->
-<!-- DASHBOARD -->
-<!-- ========================= -->
-
-
-<div
-id="dashboard"
-style="display:none;">
-
-
-
-
-
-<!-- HEADER -->
-
-<div class="dashboard-header">
-
-
-<div>
-
-<h2>
-Welcome, Admin
-</h2>
-
-
-<p>
-Manage employees, payroll, and attendance.
-</p>
-
-
-</div>
-
-
-
-<button
-type="button"
-class="admin-small-button"
-onclick="loadAdminDashboard()">
-
-Refresh Dashboard
-
-</button>
-
-
-</div>
-
-
-
-
-
-<!-- ========================= -->
-<!-- SUMMARY CARDS -->
-<!-- ========================= -->
-
-
-<div class="dashboard-stats">
-
-
-<div class="stat-card">
-
-<h3>
-Clocked In
-</h3>
-
-<span id="clockedCount">
--
-</span>
-
-</div>
-
-
-
-<div class="stat-card">
-
-<h3>
-Employees
-</h3>
-
-<span id="employeeCount">
--
-</span>
-
-</div>
-
-
-
-
-<div class="stat-card">
-
-<h3>
-Pending Requests
-</h3>
-
-<span id="requestCount">
--
-</span>
-
-</div>
-
-
-
-
-<div class="stat-card">
-
-<h3>
-Projected Pay
-</h3>
-
-<span id="projectedPay">
--
-</span>
-
-</div>
-
-
-
-</div>
-
-
-
-
-
-<!-- ========================= -->
-<!-- DASHBOARD GRID -->
-<!-- ========================= -->
-
-
-<div class="dashboard-grid">
-
-
-
-
-
-<!-- CURRENTLY CLOCKED IN -->
-
-<div class="admin-section">
-
-
-<h2>
-Currently Clocked In
-</h2>
-
-
-<div id="clockedInList">
-
-Loading...
-
-</div>
-
-
-</div>
-
-
-
-
-
-
-<!-- ADD EMPLOYEE -->
-
-<div class="admin-section">
-
-
-<h2>
-Add Employee
-</h2>
-
-
-<p>
-Create employee profile with hourly rate and PIN.
-</p>
-
-
-
-<input
-id="newEmployeeName"
-type="text"
-placeholder="Employee Name"
-aria-label="Employee name">
-
-
-
-<input
-id="newEmployeeRate"
-type="number"
-min="0"
-step="0.01"
-placeholder="Hourly Rate"
-aria-label="Hourly rate">
-
-
-
-<input
-id="newEmployeePin"
-type="password"
-inputmode="numeric"
-maxlength="4"
-placeholder="4-digit PIN"
-aria-label="New employee 4-digit PIN"
-autocomplete="new-password">
-
-
-
-
-
-<button
-type="button"
-class="employee-add-button"
-onclick="addEmployee()">
-
-Add Employee
-
-</button>
-
-
-</div>
-
-
-
-
-
-
-<!-- EMPLOYEE MANAGEMENT -->
-
-
-<div class="admin-section full-width">
-
-
-<h2>
-Employee Management
-</h2>
-
-
-<p>
-Edit pay, reset PINs, deactivate,
-or reactivate employees.
-</p>
-
-
-
-<div class="employee-tools">
-
-  <input
-    id="employeeSearch"
-    type="text"
-    placeholder="Search employee..."
-    aria-label="Search employees"
-    oninput="filterEmployees()">
-
-
-  <select
-    id="employeeFilter"
-    aria-label="Filter employees by status"
-    onchange="filterEmployees()">
-
-    <option value="all">
-      All Employees
-    </option>
-
-    <option value="active">
-      Active Employees
-    </option>
-
-    <option value="inactive">
-      Inactive Employees
-    </option>
-
-  </select>
-
-
-</div>
-
-
-<div id="employeeManagementList">
-
-Loading employees...
-
-</div>
-
-
-</div>
-
-
-
-
-
-
-
-<!-- PAYROLL -->
-
-
-<div class="admin-section">
-
-
-<h2>
-Payroll Snapshot
-</h2>
-
-
-<div id="payrollSummary">
-
-Loading...
-
-</div>
-
-
-</div>
-
-
-
-
-
-
-
-
-<!-- ANALYTICS -->
-
-
-<div class="admin-section">
-
-
-<h2>
-Admin Analytics
-</h2>
-
-
-<div id="analyticsBox">
-
-Loading...
-
-</div>
-
-
-</div>
-
-
-
-
-
-
-
-<!-- MISSED PUNCHES -->
-
-
-<div class="admin-section">
-
-
-<h2>
-Missed Punch Requests
-</h2>
-
-
-<div id="missedPunchRequests">
-
-Loading...
-
-</div>
-
-
-</div>
-
-
-
-
-
-
-
-<!-- RECENT PUNCHES -->
-
-
-<div class="admin-section full-width">
-
-
-<h2>
-Recent Punch Activity
-</h2>
-
-
-<div id="recentPunches">
-
-Loading...
-
-</div>
-
-
-</div>
-
-
-
-
-
-</div>
-
-
-</div>
-
-
-
-<script src="admin.js?v=7"></script>
-
-
+  <div class="portal admin-portal">
+    <img src="logo.png" class="logo" alt="Triumph Training Logo">
+
+    <h1>Admin Dashboard</h1>
+    <p class="subtitle">Triumph Training Management View</p>
+
+    <!-- Admin login -->
+    <div id="loginPanel" class="admin-login" aria-label="Admin login">
+      <input
+        id="adminPin"
+        type="password"
+        inputmode="numeric"
+        maxlength="4"
+        placeholder="Enter Admin PIN"
+        aria-label="Admin PIN"
+        autocomplete="current-password">
+
+      <button
+        type="button"
+        class="clock-in admin-unlock"
+        onclick="unlockAdmin()">
+        Unlock Dashboard
+      </button>
+    </div>
+
+    <p id="status" role="status" aria-live="polite"></p>
+
+    <!-- Dashboard -->
+    <main id="dashboard" style="display:none;" aria-label="Triumph Training administration dashboard">
+      <div class="dashboard-header">
+        <div>
+          <h2>Welcome, Admin</h2>
+          <p>Manage employees, payroll, and attendance.</p>
+        </div>
+
+        <button
+          type="button"
+          class="admin-small-button"
+          onclick="loadAdminDashboard()">
+          Refresh Dashboard
+        </button>
+      </div>
+
+      <!-- Summary cards -->
+      <div class="dashboard-stats" aria-label="Dashboard summary">
+        <div class="stat-card">
+          <h3>Clocked In</h3>
+          <span id="clockedCount">-</span>
+        </div>
+
+        <div class="stat-card">
+          <h3>Employees</h3>
+          <span id="employeeCount">-</span>
+        </div>
+
+        <div class="stat-card">
+          <h3>Pending Requests</h3>
+          <span id="requestCount">-</span>
+        </div>
+
+        <div class="stat-card">
+          <h3>Projected Pay</h3>
+          <span id="projectedPay">-</span>
+        </div>
+      </div>
+
+      <div class="dashboard-grid">
+        <section class="admin-section" aria-labelledby="clockedInHeading">
+          <h2 id="clockedInHeading">Currently Clocked In</h2>
+          <div id="clockedInList">Loading...</div>
+        </section>
+
+        <section class="admin-section" aria-labelledby="addEmployeeHeading">
+          <h2 id="addEmployeeHeading">Add Employee</h2>
+          <p>Create employee profile with hourly rate and PIN.</p>
+
+          <input
+            id="newEmployeeName"
+            type="text"
+            placeholder="Employee Name"
+            aria-label="Employee name"
+            autocomplete="name">
+
+          <input
+            id="newEmployeeRate"
+            type="number"
+            min="0"
+            step="0.01"
+            placeholder="Hourly Rate"
+            aria-label="Hourly rate">
+
+          <input
+            id="newEmployeePin"
+            type="password"
+            inputmode="numeric"
+            maxlength="4"
+            placeholder="4-digit PIN"
+            aria-label="New employee 4-digit PIN"
+            autocomplete="new-password">
+
+          <button
+            type="button"
+            class="employee-add-button"
+            onclick="addEmployee()">
+            Add Employee
+          </button>
+        </section>
+
+        <section class="admin-section full-width" aria-labelledby="employeeManagementHeading">
+          <h2 id="employeeManagementHeading">Employee Management</h2>
+          <p>Edit pay, reset PINs, deactivate, or reactivate employees.</p>
+
+          <div class="employee-tools">
+            <input
+              id="employeeSearch"
+              type="search"
+              placeholder="Search employee..."
+              aria-label="Search employees"
+              autocomplete="off"
+              oninput="filterEmployees()">
+
+            <select
+              id="employeeFilter"
+              aria-label="Filter employees by status"
+              onchange="filterEmployees()">
+              <option value="all">All Employees</option>
+              <option value="active">Active Employees</option>
+              <option value="inactive">Inactive Employees</option>
+            </select>
+          </div>
+
+          <div id="employeeManagementList">Loading employees...</div>
+        </section>
+
+        <section class="admin-section" aria-labelledby="payrollHeading">
+          <h2 id="payrollHeading">Payroll Snapshot</h2>
+          <div id="payrollSummary">Loading...</div>
+        </section>
+
+        <section class="admin-section" aria-labelledby="analyticsHeading">
+          <h2 id="analyticsHeading">Admin Analytics</h2>
+          <div id="analyticsBox">Loading...</div>
+        </section>
+
+        <section class="admin-section" aria-labelledby="missedPunchHeading">
+          <h2 id="missedPunchHeading">Missed Punch Requests</h2>
+          <div id="missedPunchRequests">Loading...</div>
+        </section>
+
+        <section class="admin-section full-width" aria-labelledby="recentPunchHeading">
+          <h2 id="recentPunchHeading">Recent Punch Activity</h2>
+          <div id="recentPunches">Loading...</div>
+        </section>
+      </div>
+    </main>
+  </div>
+
+  <script src="admin.js?v=7"></script>
 </body>
-
 </html>
