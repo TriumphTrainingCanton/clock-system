@@ -1,0 +1,492 @@
+/* Triumph Training admin-only enhancements */
+
+.admin-portal {
+  width: min(94vw, 1120px);
+  max-width: 1120px;
+  padding: 30px;
+}
+
+.admin-portal #status {
+  margin: 14px 0 0;
+}
+
+.dashboard-header {
+  background: rgba(15, 23, 42, 0.34);
+  border: 1px solid rgba(255,255,255,0.12);
+  border-radius: 18px;
+  padding: 18px;
+}
+
+.dashboard-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.last-updated {
+  color: #bfdbfe;
+  font-size: 12px;
+  white-space: nowrap;
+}
+
+.stat-card {
+  position: relative;
+  overflow: hidden;
+  transition: transform .2s ease, border-color .2s ease, background .2s ease;
+}
+
+.stat-card::after {
+  content: "";
+  position: absolute;
+  inset: auto -25px -35px auto;
+  width: 90px;
+  height: 90px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.06);
+}
+
+.stat-card.live {
+  border-color: rgba(74,222,128,.5);
+  background: rgba(22,163,74,.17);
+}
+
+.stat-card.attention {
+  border-color: rgba(250,204,21,.55);
+  background: rgba(202,138,4,.18);
+}
+
+.stat-caption {
+  display: block;
+  margin-top: 6px;
+  color: #bfdbfe;
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.admin-section {
+  box-shadow: inset 0 1px 0 rgba(255,255,255,.05);
+}
+
+.section-heading-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.section-heading-row h2,
+.section-heading-row p {
+  margin: 0;
+}
+
+.section-heading-row p {
+  margin-top: 5px;
+  color: #bfdbfe;
+  font-size: 13px;
+}
+
+.result-count {
+  flex: 0 0 auto;
+  padding: 5px 9px;
+  border-radius: 999px;
+  background: rgba(255,255,255,.1);
+  color: #dbeafe;
+  font-size: 12px;
+}
+
+.employee-tools {
+  grid-template-columns: minmax(0,1fr) 180px auto;
+  align-items: center;
+}
+
+.tool-clear {
+  width: auto;
+  padding: 11px 14px;
+  background: rgba(255,255,255,.1);
+  color: #e5e7eb;
+  border: 1px solid rgba(255,255,255,.12);
+}
+
+.employee-management-row {
+  padding: 16px 0;
+}
+
+.employee-management-row.inactive-row {
+  opacity: .74;
+}
+
+.employee-identity {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.employee-avatar {
+  width: 42px;
+  height: 42px;
+  flex: 0 0 42px;
+  display: grid;
+  place-items: center;
+  border-radius: 13px;
+  background: linear-gradient(135deg, rgba(59,130,246,.75), rgba(37,99,235,.38));
+  border: 1px solid rgba(255,255,255,.18);
+  color: white;
+  font-weight: 800;
+  font-size: 17px;
+}
+
+.employee-management-info strong {
+  display: block;
+  font-size: 15px;
+  margin-bottom: 3px;
+}
+
+.employee-meta {
+  color: #cbd5e1;
+  font-size: 13px;
+  margin-bottom: 7px;
+}
+
+.status-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .06em;
+  text-transform: uppercase;
+}
+
+.status-pill.active {
+  background: rgba(34,197,94,.15);
+  border: 1px solid rgba(74,222,128,.32);
+  color: #86efac;
+}
+
+.status-pill.inactive {
+  background: rgba(239,68,68,.13);
+  border: 1px solid rgba(248,113,113,.28);
+  color: #fca5a5;
+}
+
+.status-pill.pending {
+  background: rgba(234,179,8,.14);
+  border: 1px solid rgba(250,204,21,.3);
+  color: #fde047;
+}
+
+.admin-small-button.secondary {
+  background: rgba(37,99,235,.18);
+  border: 1px solid rgba(96,165,250,.3);
+  color: #dbeafe;
+}
+
+.employee-management-actions button,
+.request-actions button {
+  transition: transform .16s ease, filter .16s ease, opacity .16s ease;
+}
+
+button:disabled,
+input:disabled,
+select:disabled {
+  cursor: wait;
+  opacity: .55;
+}
+
+button:disabled:hover {
+  transform: none;
+}
+
+.clocked-row {
+  align-items: center;
+}
+
+.payroll-numbers,
+.punch-times {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+  text-align: right;
+}
+
+.payroll-numbers span,
+.punch-times span,
+.muted-text {
+  color: #bfdbfe;
+  font-size: 12px;
+}
+
+.request-card {
+  padding: 14px 0;
+}
+
+.request-topline {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.request-details {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  margin-top: 7px;
+  color: #cbd5e1;
+  font-size: 13px;
+}
+
+.employee-add-button {
+  width: 100%;
+  max-width: 300px;
+  background: #16a34a;
+  color: white;
+}
+
+.admin-toast {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 1100;
+  max-width: min(360px, calc(100vw - 32px));
+  padding: 13px 16px;
+  border-radius: 13px;
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  box-shadow: 0 18px 45px rgba(0,0,0,.28);
+  border: 1px solid rgba(255,255,255,.18);
+  opacity: 0;
+  transform: translateY(12px);
+  pointer-events: none;
+  transition: opacity .18s ease, transform .18s ease;
+}
+
+.admin-toast.show {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.admin-toast.success { background: rgba(21,128,61,.96); }
+.admin-toast.error { background: rgba(185,28,28,.96); }
+
+.modal-open {
+  overflow: hidden;
+}
+
+.admin-modal-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(2,6,23,.72);
+  backdrop-filter: blur(7px);
+}
+
+.admin-modal-backdrop[hidden] {
+  display: none;
+}
+
+.admin-modal-card {
+  width: min(100%, 470px);
+  max-height: min(82vh, 680px);
+  overflow-y: auto;
+  background: #0f1d35;
+  border: 1px solid rgba(148,163,184,.25);
+  border-radius: 20px;
+  box-shadow: 0 28px 80px rgba(0,0,0,.48);
+  padding: 22px;
+  color: white;
+}
+
+.admin-modal-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.admin-modal-header h2 {
+  margin: 0;
+  font-size: 20px;
+}
+
+.admin-modal-header p {
+  margin: 5px 0 0;
+  color: #93c5fd;
+  font-size: 13px;
+}
+
+.modal-close {
+  width: 36px;
+  min-width: 36px;
+  height: 36px;
+  padding: 0;
+  border-radius: 10px;
+  background: rgba(255,255,255,.08);
+  color: white;
+  font-size: 20px;
+}
+
+.modal-label {
+  display: block;
+  margin: 13px 0 7px;
+  color: #dbeafe;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.modal-field,
+.admin-modal-card input {
+  width: 100%;
+  max-width: none;
+  margin: 0;
+  background: rgba(255,255,255,.96);
+}
+
+.money-input-wrap {
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  border-radius: 12px;
+  background: rgba(255,255,255,.96);
+}
+
+.money-input-wrap span {
+  padding-left: 14px;
+  color: #334155;
+  font-weight: 800;
+}
+
+.money-input-wrap input {
+  border: none;
+  box-shadow: none;
+}
+
+.modal-help {
+  margin: 12px 0 0;
+  color: #cbd5e1;
+  line-height: 1.5;
+  font-size: 13px;
+}
+
+.modal-help.strong {
+  font-weight: 700;
+  color: #e2e8f0;
+}
+
+.warning-panel {
+  padding: 14px;
+  border-radius: 13px;
+  background: rgba(127,29,29,.22);
+  border: 1px solid rgba(248,113,113,.3);
+  color: #fecaca;
+  line-height: 1.45;
+}
+
+.warning-panel p {
+  margin: 7px 0 0;
+  color: #fca5a5;
+  font-size: 13px;
+}
+
+.modal-error {
+  margin-top: 13px;
+  padding: 10px 12px;
+  border-radius: 10px;
+  background: rgba(185,28,28,.2);
+  border: 1px solid rgba(248,113,113,.3);
+  color: #fecaca;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 20px;
+}
+
+.modal-actions button {
+  width: auto;
+  min-width: 110px;
+}
+
+.modal-cancel {
+  background: rgba(255,255,255,.1);
+  border: 1px solid rgba(255,255,255,.12);
+  color: white;
+}
+
+.modal-confirm.primary { background: #2563eb; color: white; }
+.modal-confirm.danger { background: #dc2626; color: white; }
+
+@media (max-width: 720px) {
+  .admin-portal {
+    width: 96%;
+    padding: 20px;
+  }
+
+  .dashboard-header-actions {
+    justify-content: flex-start;
+  }
+
+  .employee-tools {
+    grid-template-columns: 1fr;
+  }
+
+  .tool-clear {
+    width: 100%;
+  }
+
+  .employee-identity {
+    width: 100%;
+  }
+
+  .employee-management-actions {
+    width: 100%;
+  }
+
+  .employee-management-actions button {
+    flex: 1 1 120px;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-toast {
+    right: 16px;
+    left: 16px;
+    bottom: 16px;
+    max-width: none;
+  }
+
+  .admin-modal-card {
+    padding: 18px;
+    border-radius: 17px;
+  }
+
+  .modal-actions {
+    flex-direction: column-reverse;
+  }
+
+  .modal-actions button {
+    width: 100%;
+  }
+
+  .payroll-numbers,
+  .punch-times {
+    align-items: flex-start;
+    text-align: left;
+  }
+}
