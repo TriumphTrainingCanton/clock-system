@@ -20,10 +20,13 @@
         id="adminPin"
         type="password"
         inputmode="numeric"
+        pattern="[0-9]*"
         maxlength="4"
         placeholder="Enter Admin PIN"
         aria-label="Admin PIN"
-        autocomplete="current-password">
+        autocomplete="current-password"
+        enterkeyhint="done"
+        onkeydown="if (event.key === 'Enter') unlockAdmin()">
 
       <button
         type="button"
