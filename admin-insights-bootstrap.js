@@ -52,9 +52,17 @@
   script.src = "admin-insights.js?v=1";
   script.onload = () => {
     if (document.getElementById("adminFinalFeaturesScript")) return;
+
     const finalScript = document.createElement("script");
     finalScript.id = "adminFinalFeaturesScript";
     finalScript.src = "admin-final-features.js?v=1";
+    finalScript.onload = () => {
+      if (document.getElementById("adminPolishScript")) return;
+      const polishScript = document.createElement("script");
+      polishScript.id = "adminPolishScript";
+      polishScript.src = "admin-polish.js?v=1";
+      document.body.appendChild(polishScript);
+    };
     document.body.appendChild(finalScript);
   };
   document.body.appendChild(script);
