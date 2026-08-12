@@ -10,6 +10,17 @@
   margin: 14px 0 0;
 }
 
+/* Keep keyboard navigation obvious without changing mouse/touch styling. */
+.admin-portal button:focus-visible,
+.admin-portal input:focus-visible,
+.admin-portal select:focus-visible,
+.admin-modal-card button:focus-visible,
+.admin-modal-card input:focus-visible,
+.admin-modal-card select:focus-visible {
+  outline: 3px solid #93c5fd;
+  outline-offset: 3px;
+}
+
 .dashboard-header {
   background: rgba(15, 23, 42, 0.34);
   border: 1px solid rgba(255,255,255,0.12);
@@ -431,6 +442,16 @@ button:disabled:hover {
 
 .modal-confirm.primary { background: #2563eb; color: white; }
 .modal-confirm.danger { background: #dc2626; color: white; }
+
+@media (prefers-reduced-motion: reduce) {
+  .admin-portal *,
+  .admin-modal-card * {
+    scroll-behavior: auto !important;
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
 
 @media (max-width: 720px) {
   .admin-portal {
