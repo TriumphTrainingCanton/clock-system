@@ -16,7 +16,7 @@ Triumph Training Admin Dashboard
 
 <link
 rel="stylesheet"
-href="style.css?v=6">
+href="style.css?v=7">
 
 </head>
 
@@ -59,7 +59,9 @@ id="adminPin"
 type="password"
 inputmode="numeric"
 maxlength="4"
-placeholder="Enter Admin PIN">
+placeholder="Enter Admin PIN"
+aria-label="Admin PIN"
+autocomplete="current-password">
 
 
 <button
@@ -75,7 +77,7 @@ Unlock Dashboard
 
 
 
-<p id="status"></p>
+<p id="status" role="status" aria-live="polite"></p>
 
 
 
@@ -256,7 +258,8 @@ Create employee profile with hourly rate and PIN.
 <input
 id="newEmployeeName"
 type="text"
-placeholder="Employee Name">
+placeholder="Employee Name"
+aria-label="Employee name">
 
 
 
@@ -265,7 +268,8 @@ id="newEmployeeRate"
 type="number"
 min="0"
 step="0.01"
-placeholder="Hourly Rate">
+placeholder="Hourly Rate"
+aria-label="Hourly rate">
 
 
 
@@ -274,7 +278,9 @@ id="newEmployeePin"
 type="password"
 inputmode="numeric"
 maxlength="4"
-placeholder="4-digit PIN">
+placeholder="4-digit PIN"
+aria-label="New employee 4-digit PIN"
+autocomplete="new-password">
 
 
 
@@ -320,11 +326,13 @@ or reactivate employees.
     id="employeeSearch"
     type="text"
     placeholder="Search employee..."
+    aria-label="Search employees"
     oninput="filterEmployees()">
 
 
   <select
     id="employeeFilter"
+    aria-label="Filter employees by status"
     onchange="filterEmployees()">
 
     <option value="all">
