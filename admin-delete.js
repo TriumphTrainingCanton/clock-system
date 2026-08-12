@@ -87,3 +87,13 @@ async function deleteEmployeePermanently(employeeName) {
     setAdminBusy(false);
   }
 }
+
+// Load the optional admin-insights bundle after the core dashboard extensions.
+// It adds no extra request to the normal dashboard refresh path.
+(function loadAdminInsights() {
+  if (document.getElementById("adminInsightsBootstrap")) return;
+  const script = document.createElement("script");
+  script.id = "adminInsightsBootstrap";
+  script.src = "admin-insights-bootstrap.js?v=1";
+  document.body.appendChild(script);
+})();
