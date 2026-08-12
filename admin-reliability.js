@@ -1,7 +1,7 @@
 // Triumph Training dashboard reliability layer.
 // Retries ONLY the read-only dashboard fetch. Write actions are never retried.
 // Keeps a short-lived last-known-good dashboard so transient Apps Script hiccups
-// do not blank the admin panel.
+// do not blank the admin panel or make repeat visits wait through long retries.
 
 (function () {
   if (typeof postToBackend !== "function") return;
@@ -10,7 +10,8 @@
   const DASHBOARD_ACTION = "Get Admin Dashboard";
   const CACHE_KEY = "triumph_admin_dashboard_last_good_v1";
   const CACHE_MAX_AGE_MS = 15 * 60 * 1000;
-  const ATTEMPT_TIMEOUTS_MS = [12000, 18000, 22000];
+  const FIRST_ATTEMPT_TIMEOUT_MS = 10000;
+  const COLD_START_TIMEOUTS_MS = [12000, 18000];
   const RETRY_DELAYS_MS = [350, 850];
 
   function wait(ms) {
@@ -20,10 +21,7 @@
   function validateDashboardText(text) {
     const trimmed = String(text || "").trim();
 
-    if (!trimmed) {
-      throw new Error("Dashboard returned an empty response.");
-    }
-
+    if (!trimmed) throw new Error("Dashboard returned an empty response.");
     if (trimmed.startsWith("<!DOCTYPE html") || trimmed.startsWith("<html")) {
       throw new Error("Dashboard backend returned HTML instead of data.");
     }
@@ -38,10 +36,7 @@
 
   function saveLastGoodDashboard(text) {
     try {
-      localStorage.setItem(CACHE_KEY, JSON.stringify({
-        savedAt: Date.now(),
-        text
-      }));
+      localStorage.setItem(CACHE_KEY, JSON.stringify({ savedAt: Date.now(), text }));
     } catch (error) {
       console.warn("Could not save dashboard fallback cache.", error);
     }
@@ -61,10 +56,7 @@
         return null;
       }
 
-      return {
-        text: validateDashboardText(cached.text),
-        ageMs
-      };
+      return { text: validateDashboardText(cached.text), ageMs };
     } catch (error) {
       console.warn("Could not read dashboard fallback cache.", error);
       return null;
@@ -103,15 +95,21 @@
     setTimeout(() => {
       if (typeof setAdminStatus === "function") {
         setAdminStatus(
-          `Live refresh was delayed by Google. Showing the last successful dashboard from about ${ageMinutes} min ago.`,
+          `Google is responding slowly. Keeping the last successful dashboard from about ${ageMinutes} min ago.`,
           "processing"
         );
       }
 
       if (typeof showToast === "function") {
-        showToast("Live refresh delayed — showing last successful data.", "error");
+        showToast("Live refresh delayed — existing dashboard kept.", "error");
       }
     }, 0);
+  }
+
+  function refreshCacheInBackground(payload) {
+    fetchDashboardOnce(payload, 18000)
+      .then(text => saveLastGoodDashboard(text))
+      .catch(error => console.warn("Background dashboard recovery did not complete.", error));
   }
 
   postToBackend = async function (payload) {
@@ -119,33 +117,44 @@
       return originalPostToBackend(payload);
     }
 
-    const errors = [];
+    const cachedBeforeRequest = getLastGoodDashboard();
 
-    for (let attempt = 0; attempt < ATTEMPT_TIMEOUTS_MS.length; attempt++) {
-      try {
-        const text = await fetchDashboardOnce(payload, ATTEMPT_TIMEOUTS_MS[attempt]);
-        saveLastGoodDashboard(text);
-        window.__triumphDashboardUsedCache = false;
-        return text;
-      } catch (error) {
-        errors.push(error);
-        console.warn(`Dashboard refresh attempt ${attempt + 1} failed.`, error);
+    try {
+      const text = await fetchDashboardOnce(payload, FIRST_ATTEMPT_TIMEOUT_MS);
+      saveLastGoodDashboard(text);
+      window.__triumphDashboardUsedCache = false;
+      return text;
+    } catch (firstError) {
+      console.warn("Dashboard live refresh attempt failed.", firstError);
 
-        if (attempt < RETRY_DELAYS_MS.length) {
-          await wait(RETRY_DELAYS_MS[attempt]);
+      // Returning users should stay responsive: keep their recent good dashboard
+      // and recover the live cache separately instead of blocking the UI on retries.
+      if (cachedBeforeRequest) {
+        window.__triumphDashboardUsedCache = true;
+        announceCachedFallback(cachedBeforeRequest.ageMs);
+        refreshCacheInBackground(payload);
+        return cachedBeforeRequest.text;
+      }
+
+      // First load with no cache gets controlled cold-start retries.
+      const errors = [firstError];
+
+      for (let attempt = 0; attempt < COLD_START_TIMEOUTS_MS.length; attempt++) {
+        await wait(RETRY_DELAYS_MS[attempt] || 350);
+
+        try {
+          const text = await fetchDashboardOnce(payload, COLD_START_TIMEOUTS_MS[attempt]);
+          saveLastGoodDashboard(text);
+          window.__triumphDashboardUsedCache = false;
+          return text;
+        } catch (error) {
+          errors.push(error);
+          console.warn(`Dashboard cold-start retry ${attempt + 1} failed.`, error);
         }
       }
-    }
 
-    const cached = getLastGoodDashboard();
-    if (cached) {
-      console.warn("Live dashboard refresh failed; using last-known-good dashboard.", errors);
-      window.__triumphDashboardUsedCache = true;
-      announceCachedFallback(cached.ageMs);
-      return cached.text;
+      console.error("Dashboard refresh failed with no usable fallback.", errors);
+      throw errors[errors.length - 1] || new Error("Dashboard refresh failed.");
     }
-
-    console.error("Dashboard refresh failed with no usable fallback.", errors);
-    throw errors[errors.length - 1] || new Error("Dashboard refresh failed.");
   };
 })();
