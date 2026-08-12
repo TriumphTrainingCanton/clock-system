@@ -1,0 +1,48 @@
+// Loads admin insights after the core dashboard is ready.
+// This keeps Employee Details and Activity Log completely out of the normal refresh payload.
+
+(function () {
+  if (document.getElementById("adminInsightsScript")) return;
+
+  const css = document.createElement("link");
+  css.rel = "stylesheet";
+  css.href = "admin-insights.css?v=1";
+  document.head.appendChild(css);
+
+  const headerActions = document.querySelector(".dashboard-header-actions");
+  if (headerActions && !document.getElementById("systemHealthBadge")) {
+    const health = document.createElement("div");
+    health.className = "system-health-wrap";
+    health.innerHTML = `
+      <span id="systemHealthBadge" class="system-health-badge">Checking backend</span>
+      <span id="systemHealthDetail" class="system-health-detail">Waiting for dashboard response</span>
+    `;
+    headerActions.prepend(health);
+  }
+
+  const dashboardGrid = document.querySelector(".dashboard-grid");
+  if (dashboardGrid && !document.getElementById("adminActivityLogSection")) {
+    const section = document.createElement("section");
+    section.id = "adminActivityLogSection";
+    section.className = "admin-section full-width";
+    section.setAttribute("aria-labelledby", "adminActivityLogHeading");
+    section.innerHTML = `
+      <div class="activity-toolbar">
+        <div>
+          <h2 id="adminActivityLogHeading">Admin Activity Log</h2>
+          <p>Recent management changes. Loaded only when you ask for it.</p>
+        </div>
+        <button id="loadActivityButton" type="button" class="admin-small-button secondary" onclick="loadAdminActivityLog()">
+          Load Activity
+        </button>
+      </div>
+      <div id="adminActivityLog" class="empty-state">Activity history is not loaded during normal dashboard refreshes.</div>
+    `;
+    dashboardGrid.appendChild(section);
+  }
+
+  const script = document.createElement("script");
+  script.id = "adminInsightsScript";
+  script.src = "admin-insights.js?v=1";
+  document.body.appendChild(script);
+})();
