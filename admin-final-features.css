@@ -1,0 +1,68 @@
+.final-admin-tools {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  flex-wrap: wrap;
+  margin: 10px 0 12px;
+}
+
+.final-admin-tools select,
+.final-admin-tools input {
+  min-height: 40px;
+}
+
+.payroll-custom-dates {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  flex-wrap: wrap;
+}
+
+.payroll-custom-dates[hidden] {
+  display: none;
+}
+
+.payroll-range-summary {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin: 0 0 10px;
+  font-size: 0.92rem;
+}
+
+.payroll-range-summary span {
+  color: var(--muted, #64748b);
+}
+
+.long-shift-row {
+  position: relative;
+  border-color: #f59e0b !important;
+}
+
+.long-shift-warning {
+  flex: 0 0 100%;
+  margin-top: 8px;
+  padding: 6px 9px;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #9a3412;
+  font-size: 0.82rem;
+  font-weight: 700;
+}
+
+.missed-punch-tools input[type="search"] {
+  flex: 1 1 180px;
+}
+
+@media (max-width: 720px) {
+  .final-admin-tools,
+  .payroll-custom-dates {
+    align-items: stretch;
+  }
+
+  .final-admin-tools > *,
+  .payroll-custom-dates > * {
+    width: 100%;
+  }
+}
