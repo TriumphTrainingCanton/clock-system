@@ -91,3 +91,86 @@ window.exportPayrollCsv = function () {
   setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
   showToast("Payroll CSV exported.", "success");
 };
+
+// Payroll should never sit on "Loading..." indefinitely.
+// This override keeps the UI responsive and surfaces the actual backend response.
+window.loadPayrollRange = async function () {
+  const select = document.getElementById("payrollRangeSelect");
+  if (!select) return;
+
+  const mode = select.value;
+  const startDate = document.getElementById("payrollStartDate")?.value || "";
+  const endDate = document.getElementById("payrollEndDate")?.value || "";
+
+  if (mode === "custom" && (!startDate || !endDate)) {
+    showToast("Choose both payroll dates.", "error");
+    return;
+  }
+
+  const exportButton = document.getElementById("exportPayrollButton");
+  const originalSelectDisabled = select.disabled;
+  const originalExportDisabled = exportButton ? exportButton.disabled : false;
+
+  select.disabled = true;
+  if (exportButton) exportButton.disabled = true;
+  setAdminStatus("Loading payroll range...", "processing");
+
+  let uiTimeout;
+
+  try {
+    const request = postToBackend({
+      action: "Get Payroll Range",
+      adminPin: ADMIN_PIN,
+      rangeMode: mode,
+      startDate,
+      endDate
+    });
+
+    const timeout = new Promise((_, reject) => {
+      uiTimeout = setTimeout(() => {
+        reject(new Error("Payroll range request took too long. The Apps Script deployment may be outdated or Google may be responding slowly."));
+      }, 14000);
+    });
+
+    const text = await Promise.race([request, timeout]);
+
+    if (String(text || "").startsWith("Error:")) {
+      throw new Error(String(text));
+    }
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (error) {
+      throw new Error("Payroll backend returned invalid data instead of payroll JSON.");
+    }
+
+    if (!data || typeof data !== "object" || !Array.isArray(data.items)) {
+      throw new Error("Payroll backend returned an incomplete payroll response.");
+    }
+
+    payrollMode = mode;
+    activePayrollItems = data.items;
+    activePayrollLabel = data.label || "Payroll Range";
+
+    if (typeof window.__triumphOriginalRenderPayroll === "function") {
+      window.__triumphOriginalRenderPayroll(activePayrollItems);
+    }
+
+    updatePayrollRangeSummary(data);
+    setAdminStatus("Payroll range loaded.", "success");
+
+    if (!activePayrollItems.length) {
+      showToast("Payroll range loaded — no completed payroll rows found in this range.", "success");
+    }
+  } catch (error) {
+    console.error("Payroll range load failed.", error);
+    const message = String(error && error.message ? error.message : "Could not load payroll range.");
+    setAdminStatus(`Error: ${message}`, "error");
+    showToast(message, "error");
+  } finally {
+    clearTimeout(uiTimeout);
+    select.disabled = originalSelectDisabled;
+    if (exportButton) exportButton.disabled = originalExportDisabled;
+  }
+};
