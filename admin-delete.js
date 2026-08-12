@@ -22,6 +22,8 @@
       button.type = "button";
       button.className = "admin-reject admin-delete-permanent";
       button.textContent = "Delete Permanently";
+      button.setAttribute("aria-label", `Permanently delete ${employee.name}`);
+      button.title = `Permanently delete ${employee.name}`;
       button.addEventListener("click", () => permanentDeleteEmployee(employee.name));
       actions.appendChild(button);
     });
