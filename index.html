@@ -7,7 +7,7 @@
 
   <title>Triumph Training Employee Portal</title>
 
-  <link rel="stylesheet" href="style.css?v=2">
+  <link rel="stylesheet" href="style.css?v=7">
 </head>
 
 <body>
@@ -27,7 +27,7 @@
 
     <div class="clock-card">
 
-      <div id="liveTime">
+      <div id="liveTime" aria-live="off">
         --:-- --
       </div>
 
@@ -37,7 +37,7 @@
 
     </div>
 
-    <select id="name">
+    <select id="name" aria-label="Employee name">
       <option value="">Loading employees...</option>
     </select>
 
@@ -46,7 +46,9 @@
       type="password"
       inputmode="numeric"
       maxlength="4"
-      placeholder="Enter 4-digit PIN">
+      placeholder="Enter 4-digit PIN"
+      aria-label="Employee 4-digit PIN"
+      autocomplete="current-password">
 
     <div class="buttons">
 
@@ -76,7 +78,7 @@
 
     </button>
 
-    <p id="status"></p>
+    <p id="status" role="status" aria-live="polite"></p>
 
   </div>
 
