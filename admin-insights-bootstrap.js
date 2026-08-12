@@ -7,12 +7,12 @@
 
   const css = document.createElement("link");
   css.rel = "stylesheet";
-  css.href = "admin-insights.css?v=1";
+  css.href = "admin-insights.css?v=2";
   document.head.appendChild(css);
 
   const finalCss = document.createElement("link");
   finalCss.rel = "stylesheet";
-  finalCss.href = "admin-final-features.css?v=1";
+  finalCss.href = "admin-final-features.css?v=2";
   document.head.appendChild(finalCss);
 
   const headerActions = document.querySelector(".dashboard-header-actions");
@@ -49,18 +49,18 @@
 
   const script = document.createElement("script");
   script.id = "adminInsightsScript";
-  script.src = "admin-insights.js?v=1";
+  script.src = "admin-insights.js?v=2";
   script.onload = () => {
     if (document.getElementById("adminFinalFeaturesScript")) return;
 
     const finalScript = document.createElement("script");
     finalScript.id = "adminFinalFeaturesScript";
-    finalScript.src = "admin-final-features.js?v=1";
+    finalScript.src = "admin-final-features.js?v=2";
     finalScript.onload = () => {
       if (document.getElementById("adminPolishScript")) return;
       const polishScript = document.createElement("script");
       polishScript.id = "adminPolishScript";
-      polishScript.src = "admin-polish.js?v=1";
+      polishScript.src = "admin-polish.js?v=2";
       document.body.appendChild(polishScript);
     };
     document.body.appendChild(finalScript);
