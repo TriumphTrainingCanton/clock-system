@@ -1,5 +1,5 @@
-// Triumph Training dashboard reliability layer.
-// Retries ONLY the read-only dashboard fetch. Write actions are never retried.
+// Triumph Training admin reliability layer.
+// Retries ONLY read-only admin requests. Write actions are never retried.
 // Keeps a short-lived last-known-good dashboard so transient Apps Script hiccups
 // do not blank the admin panel or make repeat visits wait through long retries.
 
@@ -8,23 +8,45 @@
 
   const originalPostToBackend = postToBackend;
   const DASHBOARD_ACTION = "Get Admin Dashboard";
+  const READ_ONLY_ACTIONS = new Set([
+    DASHBOARD_ACTION,
+    "Get Payroll Range",
+    "Get Missed Punch Requests",
+    "Get Employee Details",
+    "Get Admin Activity Log"
+  ]);
+
   const CACHE_KEY = "triumph_admin_dashboard_last_good_v1";
   const CACHE_MAX_AGE_MS = 15 * 60 * 1000;
   const FIRST_ATTEMPT_TIMEOUT_MS = 10000;
-  const COLD_START_TIMEOUTS_MS = [12000, 18000];
+  const DASHBOARD_COLD_START_TIMEOUTS_MS = [12000, 18000];
+  const READ_RETRY_TIMEOUT_MS = 15000;
   const RETRY_DELAYS_MS = [350, 850];
 
   function wait(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
   }
 
-  function validateDashboardText(text) {
+  function validateResponseText(text, action) {
     const trimmed = String(text || "").trim();
 
-    if (!trimmed) throw new Error("Dashboard returned an empty response.");
+    if (!trimmed) throw new Error(`${action} returned an empty response.`);
     if (trimmed.startsWith("<!DOCTYPE html") || trimmed.startsWith("<html")) {
-      throw new Error("Dashboard backend returned HTML instead of data.");
+      throw new Error(`${action} returned HTML instead of data.`);
     }
+
+    // Read-only admin actions should return JSON unless the backend is reporting
+    // a deliberate Error: message. Preserve that message so the UI can show it.
+    if (!trimmed.startsWith("Error:")) {
+      JSON.parse(trimmed);
+    }
+
+    return trimmed;
+  }
+
+  function validateDashboardText(text) {
+    const trimmed = validateResponseText(text, DASHBOARD_ACTION);
+    if (trimmed.startsWith("Error:")) throw new Error(trimmed);
 
     const parsed = JSON.parse(trimmed);
     if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
@@ -63,7 +85,8 @@
     }
   }
 
-  async function fetchDashboardOnce(payload, timeoutMs) {
+  async function fetchReadOnce(payload, timeoutMs) {
+    const action = payload && payload.action ? payload.action : "Admin read";
     const controller = new AbortController();
     const timeout = setTimeout(() => controller.abort(), timeoutMs);
 
@@ -75,13 +98,16 @@
       });
 
       if (!response.ok) {
-        throw new Error(`Dashboard request failed with HTTP ${response.status}.`);
+        throw new Error(`${action} failed with HTTP ${response.status}.`);
       }
 
-      return validateDashboardText(await response.text());
+      const text = await response.text();
+      return action === DASHBOARD_ACTION
+        ? validateDashboardText(text)
+        : validateResponseText(text, action);
     } catch (error) {
       if (error && error.name === "AbortError") {
-        throw new Error(`Dashboard request timed out after ${Math.round(timeoutMs / 1000)} seconds.`);
+        throw new Error(`${action} timed out after ${Math.round(timeoutMs / 1000)} seconds.`);
       }
       throw error;
     } finally {
@@ -107,28 +133,22 @@
   }
 
   function refreshCacheInBackground(payload) {
-    fetchDashboardOnce(payload, 18000)
+    fetchReadOnce(payload, 18000)
       .then(text => saveLastGoodDashboard(text))
       .catch(error => console.warn("Background dashboard recovery did not complete.", error));
   }
 
-  postToBackend = async function (payload) {
-    if (!payload || payload.action !== DASHBOARD_ACTION) {
-      return originalPostToBackend(payload);
-    }
-
+  async function handleDashboardRead(payload) {
     const cachedBeforeRequest = getLastGoodDashboard();
 
     try {
-      const text = await fetchDashboardOnce(payload, FIRST_ATTEMPT_TIMEOUT_MS);
+      const text = await fetchReadOnce(payload, FIRST_ATTEMPT_TIMEOUT_MS);
       saveLastGoodDashboard(text);
       window.__triumphDashboardUsedCache = false;
       return text;
     } catch (firstError) {
       console.warn("Dashboard live refresh attempt failed.", firstError);
 
-      // Returning users should stay responsive: keep their recent good dashboard
-      // and recover the live cache separately instead of blocking the UI on retries.
       if (cachedBeforeRequest) {
         window.__triumphDashboardUsedCache = true;
         announceCachedFallback(cachedBeforeRequest.ageMs);
@@ -136,14 +156,13 @@
         return cachedBeforeRequest.text;
       }
 
-      // First load with no cache gets controlled cold-start retries.
       const errors = [firstError];
 
-      for (let attempt = 0; attempt < COLD_START_TIMEOUTS_MS.length; attempt++) {
+      for (let attempt = 0; attempt < DASHBOARD_COLD_START_TIMEOUTS_MS.length; attempt++) {
         await wait(RETRY_DELAYS_MS[attempt] || 350);
 
         try {
-          const text = await fetchDashboardOnce(payload, COLD_START_TIMEOUTS_MS[attempt]);
+          const text = await fetchReadOnce(payload, DASHBOARD_COLD_START_TIMEOUTS_MS[attempt]);
           saveLastGoodDashboard(text);
           window.__triumphDashboardUsedCache = false;
           return text;
@@ -153,8 +172,35 @@
         }
       }
 
-      console.error("Dashboard refresh failed with no usable fallback.", errors);
       throw errors[errors.length - 1] || new Error("Dashboard refresh failed.");
     }
+  }
+
+  async function handleReadOnlyAction(payload) {
+    try {
+      return await fetchReadOnce(payload, FIRST_ATTEMPT_TIMEOUT_MS);
+    } catch (firstError) {
+      console.warn(`${payload.action} attempt 1 failed; retrying once.`, firstError);
+      await wait(350);
+
+      try {
+        return await fetchReadOnce(payload, READ_RETRY_TIMEOUT_MS);
+      } catch (secondError) {
+        console.error(`${payload.action} retry failed.`, { firstError, secondError });
+        throw secondError;
+      }
+    }
+  }
+
+  postToBackend = async function (payload) {
+    if (!payload || !READ_ONLY_ACTIONS.has(payload.action)) {
+      return originalPostToBackend(payload);
+    }
+
+    if (payload.action === DASHBOARD_ACTION) {
+      return handleDashboardRead(payload);
+    }
+
+    return handleReadOnlyAction(payload);
   };
 })();
