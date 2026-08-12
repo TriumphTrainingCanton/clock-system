@@ -5,6 +5,8 @@ let allEmployees = [];
 let pendingAdminRequests = 0;
 let activeModalAction = null;
 let lastFocusedElement = null;
+let refreshInFlight = false;
+let dashboardSignatures = Object.create(null);
 
 function setAdminStatus(message, type) {
   const status = document.getElementById("status");
@@ -24,6 +26,15 @@ function setAdminBusy(isBusy) {
 
   const dashboard = document.getElementById("dashboard");
   if (dashboard) dashboard.setAttribute("aria-busy", busy ? "true" : "false");
+}
+
+function setRefreshBusy(isBusy) {
+  const button = document.getElementById("refreshDashboardButton");
+  if (!button) return;
+
+  button.disabled = isBusy;
+  button.textContent = isBusy ? "Refreshing..." : "Refresh Dashboard";
+  button.setAttribute("aria-busy", isBusy ? "true" : "false");
 }
 
 async function postToBackend(payload) {
@@ -56,6 +67,23 @@ function setLastUpdated() {
   updated.textContent = `Updated ${new Date().toLocaleTimeString([], { hour: "numeric", minute: "2-digit" })}`;
 }
 
+function stableSignature(value) {
+  try {
+    return JSON.stringify(value ?? null);
+  } catch (error) {
+    return String(Date.now());
+  }
+}
+
+function renderIfChanged(key, value, renderer) {
+  const signature = stableSignature(value);
+  if (dashboardSignatures[key] === signature) return false;
+
+  dashboardSignatures[key] = signature;
+  renderer(value);
+  return true;
+}
+
 function unlockAdmin() {
   const pin = document.getElementById("adminPin").value.trim();
   const dashboard = document.getElementById("dashboard");
@@ -73,21 +101,37 @@ function unlockAdmin() {
   loadAdminDashboard();
 }
 
-async function loadAdminDashboard() {
-  setAdminStatus("Refreshing dashboard...", "processing");
-  setAdminBusy(true);
+async function loadAdminDashboard(options = {}) {
+  if (refreshInFlight) return;
+
+  refreshInFlight = true;
+  const quiet = options.quiet === true;
+
+  if (!quiet) setAdminStatus("Refreshing dashboard...", "processing");
+  setRefreshBusy(true);
 
   try {
     const text = await postToBackend({ action: "Get Admin Dashboard", adminPin: ADMIN_PIN });
     const data = JSON.parse(text);
 
-    updateDashboardCards(data);
-    renderClockedIn(data.clockedIn || []);
-    renderEmployees(data.employees || []);
-    renderPayroll(data.payrollSummary || []);
-    renderAnalytics(data.analytics || {});
-    renderMissedPunches(data.missedPunchRequests || []);
-    renderRecentPunches(data.recentPunches || []);
+    const analytics = data.analytics || {};
+    const clockedIn = data.clockedIn || [];
+    const employees = data.employees || [];
+    const payroll = data.payrollSummary || [];
+    const missedPunches = data.missedPunchRequests || [];
+    const recentPunches = data.recentPunches || [];
+
+    renderIfChanged("analytics", analytics, value => {
+      updateDashboardCards({ analytics: value });
+      renderAnalytics(value);
+    });
+
+    renderIfChanged("clockedIn", clockedIn, renderClockedIn);
+    renderIfChanged("employees", employees, renderEmployees);
+    renderIfChanged("payroll", payroll, renderPayroll);
+    renderIfChanged("missedPunches", missedPunches, renderMissedPunches);
+    renderIfChanged("recentPunches", recentPunches, renderRecentPunches);
+
     setLastUpdated();
     setAdminStatus("Dashboard updated.", "success");
   } catch (error) {
@@ -95,7 +139,8 @@ async function loadAdminDashboard() {
     setAdminStatus("Error: Could not load dashboard. Please refresh and try again.", "error");
     showToast("Dashboard refresh failed.", "error");
   } finally {
-    setAdminBusy(false);
+    refreshInFlight = false;
+    setRefreshBusy(false);
   }
 }
 
@@ -173,7 +218,7 @@ async function addEmployee() {
       document.getElementById("newEmployeeRate").value = "";
       document.getElementById("newEmployeePin").value = "";
       showToast(`${employeeName} was added.`, "success");
-      await loadAdminDashboard();
+      await loadAdminDashboard({ quiet: true });
     } else {
       setAdminStatus(message, "error");
       showToast(message, "error");
@@ -398,7 +443,7 @@ async function updateEmployee(employeeName, hourlyRate, employeePin) {
     const message = await postToBackend({ action: "Update Employee", adminPin: ADMIN_PIN, employeeName, hourlyRate, employeePin });
     if (message.startsWith("Success")) {
       showToast(`${employeeName} updated.`, "success");
-      await loadAdminDashboard();
+      await loadAdminDashboard({ quiet: true });
     } else {
       setAdminStatus(message, "error");
       showToast(message, "error");
@@ -419,7 +464,7 @@ async function changeEmployeeStatus(action, employeeName) {
     const message = await postToBackend({ action, adminPin: ADMIN_PIN, employeeName });
     if (message.startsWith("Success")) {
       showToast(`${employeeName} ${action === "Deactivate Employee" ? "deactivated" : "reactivated"}.`, "success");
-      await loadAdminDashboard();
+      await loadAdminDashboard({ quiet: true });
     } else {
       setAdminStatus(message, "error");
       showToast(message, "error");
@@ -508,7 +553,7 @@ async function updateMissedPunchStatus(rowNumber, status) {
     const message = await postToBackend({ action: "Update Missed Punch Status", adminPin: ADMIN_PIN, rowNumber, status });
     if (message.startsWith("Success")) {
       showToast(`Request ${status.toLowerCase()}.`, "success");
-      await loadAdminDashboard();
+      await loadAdminDashboard({ quiet: true });
     } else {
       setAdminStatus(message, "error");
       showToast(message, "error");
