@@ -73,20 +73,7 @@ function updateSystemHealth(isOnline, responseMs) {
   detail.textContent = `${speed} · ${responseMs} ms`;
 }
 
-function setInfoModalMode() {
-  const cancelButton = document.querySelector("#adminModal .modal-cancel");
-  const confirmButton = document.getElementById("modalConfirmButton");
-  if (cancelButton) cancelButton.style.display = "none";
-  if (confirmButton) confirmButton.textContent = "Close";
-}
-
-function restoreModalButtons() {
-  const cancelButton = document.querySelector("#adminModal .modal-cancel");
-  if (cancelButton) cancelButton.style.display = "";
-}
-
 async function openEmployeeDetails(employeeName) {
-  restoreModalButtons();
   openModal({
     title: "Employee Details",
     subtitle: employeeName,
@@ -94,7 +81,6 @@ async function openEmployeeDetails(employeeName) {
     body: '<div class="insight-loading">Loading employee details…</div>',
     onConfirm: async () => closeAdminModal()
   });
-  setInfoModalMode();
 
   try {
     const text = await postToBackend({
