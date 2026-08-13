@@ -19,6 +19,8 @@
   if (headerActions && !document.getElementById("systemHealthBadge")) {
     const health = document.createElement("div");
     health.className = "system-health-wrap";
+    health.setAttribute("role", "status");
+    health.setAttribute("aria-live", "polite");
     health.innerHTML = `
       <span id="systemHealthBadge" class="system-health-badge">Checking backend</span>
       <span id="systemHealthDetail" class="system-health-detail">Waiting for dashboard response</span>
