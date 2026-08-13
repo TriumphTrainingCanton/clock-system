@@ -92,7 +92,7 @@ window.exportPayrollCsv = function () {
   showToast("Payroll CSV exported instantly.", "success");
 };
 
-const TRIUMPH_PAYROLL_CACHE_KEY = "triumph_admin_payroll_ranges_v1";
+const TRIUMPH_PAYROLL_CACHE_KEY = "triumph_admin_payroll_ranges_v2";
 const TRIUMPH_PAYROLL_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const triumphPayrollRefreshes = new Map();
 
