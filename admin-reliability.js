@@ -8,9 +8,10 @@
 
   const originalPostToBackend = postToBackend;
   const DASHBOARD_ACTION = "Get Admin Dashboard";
+  const PAYROLL_ACTION = "Get Payroll Range";
   const READ_ONLY_ACTIONS = new Set([
     DASHBOARD_ACTION,
-    "Get Payroll Range",
+    PAYROLL_ACTION,
     "Get Missed Punch Requests",
     "Get Employee Details",
     "Get Admin Activity Log"
@@ -19,6 +20,7 @@
   const CACHE_KEY = "triumph_admin_dashboard_last_good_v1";
   const CACHE_MAX_AGE_MS = 15 * 60 * 1000;
   const FIRST_ATTEMPT_TIMEOUT_MS = 10000;
+  const PAYROLL_FAST_TIMEOUT_MS = 8000;
   const DASHBOARD_COLD_START_TIMEOUTS_MS = [12000, 18000];
   const READ_RETRY_TIMEOUT_MS = 15000;
   const RETRY_DELAYS_MS = [350, 850];
@@ -35,8 +37,6 @@
       throw new Error(`${action} returned HTML instead of data.`);
     }
 
-    // Read-only admin actions should return JSON unless the backend is reporting
-    // a deliberate Error: message. Preserve that message so the UI can show it.
     if (!trimmed.startsWith("Error:")) {
       JSON.parse(trimmed);
     }
@@ -199,6 +199,12 @@
 
     if (payload.action === DASHBOARD_ACTION) {
       return handleDashboardRead(payload);
+    }
+
+    // Payroll already has a persistent browser cache and background refresh layer.
+    // Do one fast live attempt instead of stacking 10s + retry delays + 15s.
+    if (payload.action === PAYROLL_ACTION) {
+      return fetchReadOnce(payload, PAYROLL_FAST_TIMEOUT_MS);
     }
 
     return handleReadOnlyAction(payload);
