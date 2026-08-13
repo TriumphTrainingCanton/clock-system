@@ -5,8 +5,8 @@ const TRIUMPH_PENDING_REQUEST_KEY = "triumph_employee_pending_request_v1";
 const TRIUMPH_PENDING_REQUEST_MAX_AGE_MS = 2 * 60 * 1000;
 
 function triumphCreateRequestId() {
-  if (crypto && typeof crypto.randomUUID === "function") {
-    return crypto.randomUUID().replace(/-/g, "_");
+  if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") {
+    return globalThis.crypto.randomUUID().replace(/-/g, "_");
   }
 
   const random = Math.random().toString(36).slice(2);
