@@ -45,15 +45,19 @@
       id="pin"
       type="password"
       inputmode="numeric"
+      pattern="[0-9]*"
       maxlength="4"
       placeholder="Enter 4-digit PIN"
       aria-label="Employee 4-digit PIN"
-      autocomplete="current-password">
+      autocomplete="current-password"
+      enterkeyhint="done">
 
     <div class="buttons">
 
       <button
+        type="button"
         class="clock-in"
+        data-punch-action
         onclick="clockIn()">
 
         Clock In
@@ -61,7 +65,9 @@
       </button>
 
       <button
+        type="button"
         class="clock-out"
+        data-punch-action
         onclick="clockOut()">
 
         Clock Out
@@ -71,7 +77,9 @@
     </div>
 
     <button
+      type="button"
       class="missed-button"
+      data-punch-action
       onclick="missedClockOut()">
 
       Missed Clock Out
@@ -82,7 +90,7 @@
 
   </div>
 
-  <script src="script.js?v=4"></script>
+  <script src="script.js?v=5"></script>
 
 </body>
 
