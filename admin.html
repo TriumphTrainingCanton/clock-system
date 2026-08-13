@@ -121,10 +121,12 @@
             id="newEmployeePin"
             type="password"
             inputmode="numeric"
+            pattern="[0-9]*"
             maxlength="4"
             placeholder="4-digit PIN"
             aria-label="New employee 4-digit PIN"
-            autocomplete="new-password">
+            autocomplete="new-password"
+            enterkeyhint="done">
 
           <button
             type="button"
@@ -150,6 +152,7 @@
               placeholder="Search employee..."
               aria-label="Search employees"
               autocomplete="off"
+              enterkeyhint="search"
               oninput="filterEmployees()">
 
             <select
