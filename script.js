@@ -1,343 +1,268 @@
 const url = "https://script.google.com/macros/s/AKfycbwidHd1FgdRr3fUx2uqAAbBE3tUFGcFKOxqzN-lI7HT_-EFtaeVHMtRITl9faMdmyiDLA/exec";
 
-let cachedIP = "Unable to Detect";
-let ipLoaded = false;
+const EMPLOYEE_CACHE_KEY = "triumph_employee_list_v1";
+const EMPLOYEE_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const REQUEST_TIMEOUT_MS = 10000;
 
+let cachedIP = "Unable to Detect";
+let punchInFlight = false;
+
+function fetchWithTimeout(requestUrl, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
+  const controller = new AbortController();
+  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+
+  return fetch(requestUrl, {
+    ...options,
+    signal: controller.signal
+  }).finally(() => clearTimeout(timeout));
+}
 
 // ==============================
-// LOAD PUBLIC IP
+// LOAD PUBLIC IP IN BACKGROUND
 // ==============================
 
 async function loadPublicIP() {
   try {
-    const controller = new AbortController();
-
-    const timeout = setTimeout(() => {
-      controller.abort();
-    }, 2500);
-
-    const response = await fetch(
+    const response = await fetchWithTimeout(
       "https://api.ipify.org?format=json",
-      {
-        signal: controller.signal
-      }
+      {},
+      2500
     );
 
-    clearTimeout(timeout);
-
     if (!response.ok) {
-      throw new Error(
-        "IP service returned " + response.status
-      );
+      throw new Error("IP service returned " + response.status);
     }
 
     const data = await response.json();
-
-    if (data.ip) {
-      cachedIP = data.ip;
-    }
-
+    if (data.ip) cachedIP = data.ip;
   } catch (error) {
-    console.error(
-      "Could not get IP address:",
-      error
-    );
-
+    console.warn("Could not get IP address; continuing without it.", error);
     cachedIP = "Unable to Detect";
-
-  } finally {
-    ipLoaded = true;
   }
 }
 
 loadPublicIP();
 
+// ==============================
+// EMPLOYEE LIST CACHE
+// ==============================
 
-// ==============================
-// LOAD EMPLOYEES FROM SHEET
-// ==============================
+function readEmployeeCache() {
+  try {
+    const cached = JSON.parse(localStorage.getItem(EMPLOYEE_CACHE_KEY) || "null");
+    if (!cached || !Array.isArray(cached.employees) || !cached.savedAt) return null;
+
+    const age = Date.now() - Number(cached.savedAt);
+    if (!Number.isFinite(age) || age < 0 || age > EMPLOYEE_CACHE_MAX_AGE_MS) {
+      localStorage.removeItem(EMPLOYEE_CACHE_KEY);
+      return null;
+    }
+
+    return cached.employees;
+  } catch (error) {
+    return null;
+  }
+}
+
+function saveEmployeeCache(employees) {
+  try {
+    localStorage.setItem(
+      EMPLOYEE_CACHE_KEY,
+      JSON.stringify({ savedAt: Date.now(), employees })
+    );
+  } catch (error) {
+    console.warn("Could not cache employee list.", error);
+  }
+}
+
+function renderEmployees(employees) {
+  const select = document.getElementById("name");
+  const previousValue = select.value;
+
+  select.innerHTML = '<option value="">Select Employee</option>';
+
+  employees.forEach(employee => {
+    if (!employee || !employee.name) return;
+
+    const option = document.createElement("option");
+    option.value = employee.name;
+    option.textContent = employee.name;
+    select.appendChild(option);
+  });
+
+  if (employees.length === 0) {
+    select.innerHTML = '<option value="">No active employees</option>';
+  } else if (previousValue && employees.some(employee => employee.name === previousValue)) {
+    select.value = previousValue;
+  }
+}
 
 async function loadEmployees() {
-  const select =
-    document.getElementById("name");
+  const select = document.getElementById("name");
+  const cachedEmployees = readEmployeeCache();
+
+  if (cachedEmployees) {
+    renderEmployees(cachedEmployees);
+  }
 
   try {
-    const response = await fetch(url, {
+    const response = await fetchWithTimeout(url, {
       method: "POST",
+      body: JSON.stringify({ action: "Get Employees" })
+    }, 8000);
 
-      body: JSON.stringify({
-        action: "Get Employees"
-      })
-    });
-
-    const text =
-      await response.text();
-
-
-    // Catch broken Apps Script deployment pages
-    if (
-      text.trim().startsWith("<!DOCTYPE html") ||
-      text.trim().startsWith("<html")
-    ) {
-      throw new Error(
-        "Backend returned HTML instead of employee data."
-      );
+    if (!response.ok) {
+      throw new Error("Employee request returned " + response.status);
     }
 
+    const text = await response.text();
+    const trimmed = text.trim();
 
-    const employees =
-      JSON.parse(text);
-
-
-    select.innerHTML =
-      '<option value="">Select Employee</option>';
-
-
-    employees.forEach(employee => {
-      const option =
-        document.createElement("option");
-
-      option.value =
-        employee.name;
-
-      option.textContent =
-        employee.name;
-
-      select.appendChild(option);
-    });
-
-
-    if (employees.length === 0) {
-      select.innerHTML =
-        '<option value="">No active employees</option>';
+    if (trimmed.startsWith("<!DOCTYPE html") || trimmed.startsWith("<html")) {
+      throw new Error("Backend returned HTML instead of employee data.");
     }
 
+    const employees = JSON.parse(trimmed);
+    if (!Array.isArray(employees)) {
+      throw new Error("Employee response was not a list.");
+    }
+
+    saveEmployeeCache(employees);
+    renderEmployees(employees);
   } catch (error) {
-    console.error(
-      "Could not load employees:",
-      error
-    );
+    console.error("Could not refresh employees:", error);
 
-    select.innerHTML =
-      '<option value="">Error loading employees</option>';
+    if (!cachedEmployees) {
+      select.innerHTML = '<option value="">Error loading employees</option>';
+      setStatus("Could not load employees. Please refresh and try again.", "error");
+    }
   }
 }
 
 loadEmployees();
-
 
 // ==============================
 // STATUS MESSAGE
 // ==============================
 
 function setStatus(message, type) {
-  const status =
-    document.getElementById("status");
-
-  status.className = type;
+  const status = document.getElementById("status");
+  status.className = type || "";
   status.innerText = message;
 }
 
+function setPunchControlsDisabled(disabled) {
+  document.querySelectorAll("[data-punch-action]").forEach(button => {
+    button.disabled = disabled;
+  });
+
+  document.getElementById("name").disabled = disabled;
+  document.getElementById("pin").disabled = disabled;
+}
 
 // ==============================
 // SEND CLOCK REQUEST
 // ==============================
 
 async function send(action) {
+  if (punchInFlight) return;
 
-  const name =
-    document
-      .getElementById("name")
-      .value
-      .trim();
-
-
-  const pin =
-    document
-      .getElementById("pin")
-      .value
-      .trim();
-
-
-  const buttons =
-    document.querySelectorAll("button");
-
+  const name = document.getElementById("name").value.trim();
+  const pinInput = document.getElementById("pin");
+  const pin = pinInput.value.trim();
 
   if (name === "") {
-    setStatus(
-      "Error: Please select your name.",
-      "error"
-    );
-
+    setStatus("Please select your name.", "error");
+    document.getElementById("name").focus();
     return;
   }
 
-
-  if (pin === "") {
-    setStatus(
-      "Error: Please enter your PIN.",
-      "error"
-    );
-
+  if (!/^\d{4}$/.test(pin)) {
+    setStatus("Please enter your 4-digit PIN.", "error");
+    pinInput.focus();
     return;
   }
 
+  punchInFlight = true;
+  setPunchControlsDisabled(true);
 
-  buttons.forEach(button => {
-    button.disabled = true;
-  });
+  const actionLabel = action === "Clock In"
+    ? "Clocking in..."
+    : action === "Clock Out"
+      ? "Clocking out..."
+      : "Submitting request...";
 
-
-  setStatus(
-    "Processing...",
-    "processing"
-  );
-
-
-  // Give IP lookup a brief moment to finish
-  if (!ipLoaded) {
-    await new Promise(resolve =>
-      setTimeout(resolve, 300)
-    );
-  }
-
+  setStatus(actionLabel, "processing");
 
   try {
-
-    const response =
-      await fetch(url, {
-
-        method: "POST",
-
-        body: JSON.stringify({
-          name: name,
-          pin: pin,
-          action: action,
-          ipAddress: cachedIP
-        })
-
-      });
-
-
-    const message =
-      await response.text();
-
-
-    // Prevent giant Google HTML error page
-    if (
-      message.trim().startsWith("<!DOCTYPE html") ||
-      message.trim().startsWith("<html")
-    ) {
-
-      console.error(
-        "Unexpected HTML response:",
-        message
-      );
-
-
-      setStatus(
-        "Error: Backend deployment URL is not responding correctly.",
-        "error"
-      );
-
-      return;
-    }
-
-
-    if (
-      message.startsWith("Success")
-    ) {
-
-      setStatus(
-        message,
-        "success"
-      );
-
-
-      document
-        .getElementById("pin")
-        .value = "";
-
-    } else {
-
-      setStatus(
-        message,
-        "error"
-      );
-    }
-
-
-  } catch (error) {
-
-    console.error(
-      "Clock request failed:",
-      error
-    );
-
-
-    setStatus(
-      "Error: Could not connect. Try again.",
-      "error"
-    );
-
-  } finally {
-
-    buttons.forEach(button => {
-      button.disabled = false;
+    // IP lookup is intentionally non-blocking. Use whatever value is ready now.
+    const response = await fetchWithTimeout(url, {
+      method: "POST",
+      body: JSON.stringify({
+        name,
+        pin,
+        action,
+        ipAddress: cachedIP
+      })
     });
 
+    if (!response.ok) {
+      throw new Error("Server returned " + response.status);
+    }
+
+    const message = (await response.text()).trim();
+
+    if (message.startsWith("<!DOCTYPE html") || message.startsWith("<html")) {
+      throw new Error("Backend deployment is not responding correctly.");
+    }
+
+    if (message.startsWith("Success")) {
+      setStatus(message, "success");
+      pinInput.value = "";
+    } else {
+      setStatus(message || "Unable to complete request.", "error");
+    }
+  } catch (error) {
+    console.error("Clock request failed:", error);
+
+    const timedOut = error && error.name === "AbortError";
+    setStatus(
+      timedOut
+        ? "Request took too long. Please try again."
+        : "Could not connect. Please try again.",
+      "error"
+    );
+  } finally {
+    punchInFlight = false;
+    setPunchControlsDisabled(false);
+    pinInput.focus();
   }
 }
-
 
 // ==============================
 // LIVE CLOCK
 // ==============================
 
 function updateClock() {
+  const now = new Date();
 
-  const now =
-    new Date();
+  document.getElementById("liveTime").innerText = now.toLocaleTimeString([], {
+    hour: "numeric",
+    minute: "2-digit",
+    second: "2-digit",
+    hour12: true
+  });
 
-
-  document
-    .getElementById("liveTime")
-    .innerText =
-
-    now.toLocaleTimeString([], {
-
-      hour: "numeric",
-      minute: "2-digit",
-      second: "2-digit",
-      hour12: true
-
-    });
-
-
-  document
-    .getElementById("liveDate")
-    .innerText =
-
-    now.toLocaleDateString([], {
-
-      weekday: "long",
-      month: "long",
-      day: "numeric",
-      year: "numeric"
-
-    });
-
+  document.getElementById("liveDate").innerText = now.toLocaleDateString([], {
+    weekday: "long",
+    month: "long",
+    day: "numeric",
+    year: "numeric"
+  });
 }
 
-
-setInterval(
-  updateClock,
-  1000
-);
-
-
+setInterval(updateClock, 1000);
 updateClock();
-
 
 // ==============================
 // BUTTON FUNCTIONS
@@ -347,11 +272,9 @@ function clockIn() {
   send("Clock In");
 }
 
-
 function clockOut() {
   send("Clock Out");
 }
-
 
 function missedClockOut() {
   send("Missed Clock Out");
