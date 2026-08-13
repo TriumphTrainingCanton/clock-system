@@ -7,6 +7,7 @@
   <title>Triumph Training Employee Portal</title>
   <link rel="stylesheet" href="style.css?v=7">
   <link rel="stylesheet" href="employee.css?v=1">
+  <link rel="stylesheet" href="employee-workflow.css?v=1">
 </head>
 
 <body class="employee-page">
@@ -110,6 +111,48 @@
     </section>
   </main>
 
+  <div id="missedPunchModal" class="employee-modal-backdrop" hidden role="dialog" aria-modal="true" aria-labelledby="missedPunchTitle">
+    <section class="employee-modal-card">
+      <header class="employee-modal-header">
+        <div>
+          <p class="employee-eyebrow">Correction Request</p>
+          <h2 id="missedPunchTitle">Missed Clock Out</h2>
+          <p>Submit the approximate date and time you should have clocked out. An admin will review the request.</p>
+        </div>
+        <button type="button" class="employee-modal-close" onclick="closeMissedPunchModal()" aria-label="Close missed clock-out form">×</button>
+      </header>
+
+      <div class="employee-modal-note">
+        Requesting for <strong id="missedEmployeeName">Employee</strong>. Your current PIN is used to verify this request.
+      </div>
+
+      <div class="employee-modal-grid">
+        <div class="employee-field">
+          <label for="missedDate">Missed date</label>
+          <input id="missedDate" type="date" required>
+        </div>
+
+        <div class="employee-field">
+          <label for="missedTime">Approx. clock-out time</label>
+          <input id="missedTime" type="time" required>
+        </div>
+      </div>
+
+      <div class="employee-field employee-modal-reason">
+        <label for="missedReason">Reason <span class="employee-field-hint">5–200 characters</span></label>
+        <textarea id="missedReason" maxlength="200" placeholder="Example: I left after closing and forgot to clock out." aria-describedby="missedReasonHelp"></textarea>
+      </div>
+
+      <p id="missedReasonHelp" class="employee-modal-note">Only submit one request for the same missed punch. Duplicate protection is built in.</p>
+
+      <div class="employee-modal-actions">
+        <button type="button" class="employee-modal-secondary" onclick="closeMissedPunchModal()">Cancel</button>
+        <button id="missedSubmitButton" type="button" class="employee-modal-primary" onclick="submitMissedPunch()">Submit Request</button>
+      </div>
+    </section>
+  </div>
+
   <script src="script.js?v=6"></script>
+  <script src="employee-security.js?v=2"></script>
 </body>
 </html>
