@@ -40,8 +40,9 @@ function triumphCsvSafeValue(value) {
 }
 
 window.exportPayrollCsv = function () {
+  // Export is intentionally 100% local. It never waits on Apps Script.
   if (!Array.isArray(activePayrollItems) || !activePayrollItems.length) {
-    showToast("There is no payroll data to export.", "error");
+    showToast("There is no payroll data to export for this range.", "error");
     return;
   }
 
@@ -87,13 +88,147 @@ window.exportPayrollCsv = function () {
   link.click();
   link.remove();
 
-  // Delay revocation slightly so slower browsers can finish starting the download.
   setTimeout(() => URL.revokeObjectURL(objectUrl), 1000);
-  showToast("Payroll CSV exported.", "success");
+  showToast("Payroll CSV exported instantly.", "success");
 };
 
-// Payroll should never sit on "Loading..." indefinitely.
-// This override keeps the UI responsive and surfaces the actual backend response.
+const TRIUMPH_PAYROLL_CACHE_KEY = "triumph_admin_payroll_ranges_v1";
+const TRIUMPH_PAYROLL_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const triumphPayrollRefreshes = new Map();
+
+function triumphPayrollCacheId(mode, startDate, endDate) {
+  return [mode || "dashboard", startDate || "", endDate || ""].join("|");
+}
+
+function readTriumphPayrollCache() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(TRIUMPH_PAYROLL_CACHE_KEY) || "{}");
+    return parsed && typeof parsed === "object" ? parsed : {};
+  } catch (error) {
+    return {};
+  }
+}
+
+function getTriumphPayrollCache(mode, startDate, endDate) {
+  const cache = readTriumphPayrollCache();
+  const entry = cache[triumphPayrollCacheId(mode, startDate, endDate)];
+  if (!entry || !entry.savedAt || !entry.data) return null;
+  if (Date.now() - Number(entry.savedAt) > TRIUMPH_PAYROLL_CACHE_MAX_AGE_MS) return null;
+  if (!Array.isArray(entry.data.items)) return null;
+  return entry;
+}
+
+function saveTriumphPayrollCache(mode, startDate, endDate, data) {
+  try {
+    const cache = readTriumphPayrollCache();
+    cache[triumphPayrollCacheId(mode, startDate, endDate)] = {
+      savedAt: Date.now(),
+      data
+    };
+    localStorage.setItem(TRIUMPH_PAYROLL_CACHE_KEY, JSON.stringify(cache));
+  } catch (error) {
+    console.warn("Payroll cache could not be saved.", error);
+  }
+}
+
+function applyTriumphPayrollData(data, options = {}) {
+  payrollMode = options.mode || payrollMode;
+  activePayrollItems = Array.isArray(data.items) ? data.items : [];
+  activePayrollLabel = data.label || "Payroll Range";
+
+  if (typeof window.__triumphOriginalRenderPayroll === "function") {
+    window.__triumphOriginalRenderPayroll(activePayrollItems);
+  }
+
+  updatePayrollRangeSummary(data);
+
+  if (options.fromCache) {
+    const ageMinutes = Math.max(0, Math.round((Date.now() - Number(options.savedAt || Date.now())) / 60000));
+    setAdminStatus(
+      ageMinutes <= 1
+        ? "Payroll ready from saved data. Checking for updates quietly..."
+        : `Payroll ready instantly from saved data (${ageMinutes} min old). Checking for updates quietly...`,
+      "success"
+    );
+  } else {
+    setAdminStatus("Payroll range updated.", "success");
+  }
+}
+
+async function requestTriumphPayrollRange(mode, startDate, endDate, timeoutMs = 18000) {
+  let timeoutId;
+  try {
+    const request = postToBackend({
+      action: "Get Payroll Range",
+      adminPin: ADMIN_PIN,
+      rangeMode: mode,
+      startDate,
+      endDate
+    });
+
+    const timeout = new Promise((_, reject) => {
+      timeoutId = setTimeout(() => reject(new Error("Payroll refresh timed out.")), timeoutMs);
+    });
+
+    const text = await Promise.race([request, timeout]);
+    if (String(text || "").startsWith("Error:")) throw new Error(String(text));
+
+    let data;
+    try {
+      data = JSON.parse(text);
+    } catch (error) {
+      throw new Error("Payroll backend returned invalid data.");
+    }
+
+    if (!data || typeof data !== "object" || !Array.isArray(data.items)) {
+      throw new Error("Payroll backend returned an incomplete payroll response.");
+    }
+
+    return data;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+}
+
+function isCurrentTriumphPayrollSelection(mode, startDate, endDate) {
+  const select = document.getElementById("payrollRangeSelect");
+  if (!select || select.value !== mode) return false;
+  if (mode !== "custom") return true;
+  return (
+    (document.getElementById("payrollStartDate")?.value || "") === startDate &&
+    (document.getElementById("payrollEndDate")?.value || "") === endDate
+  );
+}
+
+async function refreshTriumphPayrollInBackground(mode, startDate, endDate) {
+  const key = triumphPayrollCacheId(mode, startDate, endDate);
+  if (triumphPayrollRefreshes.has(key)) return triumphPayrollRefreshes.get(key);
+
+  const refreshPromise = (async () => {
+    try {
+      const data = await requestTriumphPayrollRange(mode, startDate, endDate, 20000);
+      saveTriumphPayrollCache(mode, startDate, endDate, data);
+
+      if (isCurrentTriumphPayrollSelection(mode, startDate, endDate)) {
+        applyTriumphPayrollData(data, { mode, fromCache: false });
+      }
+      return data;
+    } catch (error) {
+      console.warn("Background payroll refresh failed; saved payroll remains available.", error);
+      return null;
+    } finally {
+      triumphPayrollRefreshes.delete(key);
+    }
+  })();
+
+  triumphPayrollRefreshes.set(key, refreshPromise);
+  return refreshPromise;
+}
+
+// Permanent fast-path for payroll ranges:
+// 1) use the last successful range immediately;
+// 2) refresh quietly in the background;
+// 3) only wait on Google the very first time a range has never been loaded.
 window.loadPayrollRange = async function () {
   const select = document.getElementById("payrollRangeSelect");
   if (!select) return;
@@ -107,61 +242,31 @@ window.loadPayrollRange = async function () {
     return;
   }
 
-  const exportButton = document.getElementById("exportPayrollButton");
-  const originalSelectDisabled = select.disabled;
-  const originalExportDisabled = exportButton ? exportButton.disabled : false;
+  const cached = getTriumphPayrollCache(mode, startDate, endDate);
+  if (cached) {
+    applyTriumphPayrollData(cached.data, {
+      mode,
+      fromCache: true,
+      savedAt: cached.savedAt
+    });
 
+    // Do not block the admin. Fresh data replaces the saved result when ready.
+    refreshTriumphPayrollInBackground(mode, startDate, endDate);
+    return;
+  }
+
+  const exportButton = document.getElementById("exportPayrollButton");
   select.disabled = true;
   if (exportButton) exportButton.disabled = true;
-  setAdminStatus("Loading payroll range...", "processing");
-
-  let uiTimeout;
+  setAdminStatus("Loading this payroll range for the first time...", "processing");
 
   try {
-    const request = postToBackend({
-      action: "Get Payroll Range",
-      adminPin: ADMIN_PIN,
-      rangeMode: mode,
-      startDate,
-      endDate
-    });
-
-    const timeout = new Promise((_, reject) => {
-      uiTimeout = setTimeout(() => {
-        reject(new Error("Payroll range request took too long. The Apps Script deployment may be outdated or Google may be responding slowly."));
-      }, 14000);
-    });
-
-    const text = await Promise.race([request, timeout]);
-
-    if (String(text || "").startsWith("Error:")) {
-      throw new Error(String(text));
-    }
-
-    let data;
-    try {
-      data = JSON.parse(text);
-    } catch (error) {
-      throw new Error("Payroll backend returned invalid data instead of payroll JSON.");
-    }
-
-    if (!data || typeof data !== "object" || !Array.isArray(data.items)) {
-      throw new Error("Payroll backend returned an incomplete payroll response.");
-    }
-
-    payrollMode = mode;
-    activePayrollItems = data.items;
-    activePayrollLabel = data.label || "Payroll Range";
-
-    if (typeof window.__triumphOriginalRenderPayroll === "function") {
-      window.__triumphOriginalRenderPayroll(activePayrollItems);
-    }
-
-    updatePayrollRangeSummary(data);
-    setAdminStatus("Payroll range loaded.", "success");
+    const data = await requestTriumphPayrollRange(mode, startDate, endDate, 18000);
+    saveTriumphPayrollCache(mode, startDate, endDate, data);
+    applyTriumphPayrollData(data, { mode, fromCache: false });
 
     if (!activePayrollItems.length) {
-      showToast("Payroll range loaded — no completed payroll rows found in this range.", "success");
+      showToast("Payroll loaded — no completed payroll rows found in this range.", "success");
     }
   } catch (error) {
     console.error("Payroll range load failed.", error);
@@ -169,8 +274,7 @@ window.loadPayrollRange = async function () {
     setAdminStatus(`Error: ${message}`, "error");
     showToast(message, "error");
   } finally {
-    clearTimeout(uiTimeout);
-    select.disabled = originalSelectDisabled;
-    if (exportButton) exportButton.disabled = originalExportDisabled;
+    select.disabled = false;
+    if (exportButton) exportButton.disabled = false;
   }
 };
