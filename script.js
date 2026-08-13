@@ -3,9 +3,12 @@ const url = "https://script.google.com/macros/s/AKfycbwidHd1FgdRr3fUx2uqAAbBE3tU
 const EMPLOYEE_CACHE_KEY = "triumph_employee_list_v1";
 const EMPLOYEE_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
 const REQUEST_TIMEOUT_MS = 10000;
+const SUCCESS_RESET_DELAY_MS = 1200;
 
 let cachedIP = "Unable to Detect";
 let punchInFlight = false;
+let portalReady = false;
+let resetTimer = null;
 
 function fetchWithTimeout(requestUrl, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
   const controller = new AbortController();
@@ -13,9 +16,36 @@ function fetchWithTimeout(requestUrl, options = {}, timeoutMs = REQUEST_TIMEOUT_
 
   return fetch(requestUrl, {
     ...options,
-    signal: controller.signal
+    signal: controller.signal,
+    cache: "no-store"
   }).finally(() => clearTimeout(timeout));
 }
+
+function setPortalReady(ready, label) {
+  portalReady = Boolean(ready);
+  const pill = document.getElementById("portalReadyPill");
+  const text = document.getElementById("portalReadyText");
+
+  if (!pill || !text) return;
+
+  pill.classList.toggle("ready", portalReady && navigator.onLine);
+  text.textContent = label || (portalReady ? "Ready" : "Connecting");
+}
+
+function updateOnlineState() {
+  if (!navigator.onLine) {
+    setPortalReady(false, "Offline");
+    if (!punchInFlight) {
+      setStatus("No network connection. Reconnect before clocking in or out.", "error");
+    }
+    return;
+  }
+
+  setPortalReady(portalReady, portalReady ? "Ready" : "Connecting");
+}
+
+window.addEventListener("online", updateOnlineState);
+window.addEventListener("offline", updateOnlineState);
 
 // ==============================
 // LOAD PUBLIC IP IN BACKGROUND
@@ -41,7 +71,12 @@ async function loadPublicIP() {
   }
 }
 
-loadPublicIP();
+// Do not compete with first paint or employee-list rendering.
+if ("requestIdleCallback" in window) {
+  requestIdleCallback(loadPublicIP, { timeout: 1800 });
+} else {
+  setTimeout(loadPublicIP, 250);
+}
 
 // ==============================
 // EMPLOYEE LIST CACHE
@@ -95,6 +130,8 @@ function renderEmployees(employees) {
   } else if (previousValue && employees.some(employee => employee.name === previousValue)) {
     select.value = previousValue;
   }
+
+  setPortalReady(employees.length > 0, employees.length > 0 ? "Ready" : "No staff");
 }
 
 async function loadEmployees() {
@@ -103,6 +140,8 @@ async function loadEmployees() {
 
   if (cachedEmployees) {
     renderEmployees(cachedEmployees);
+  } else {
+    setPortalReady(false, "Connecting");
   }
 
   try {
@@ -134,30 +173,93 @@ async function loadEmployees() {
 
     if (!cachedEmployees) {
       select.innerHTML = '<option value="">Error loading employees</option>';
-      setStatus("Could not load employees. Please refresh and try again.", "error");
+      setPortalReady(false, "Unavailable");
+      setStatus("Could not load employees. Refresh and try again.", "error");
     }
   }
 }
 
-loadEmployees();
-
 // ==============================
-// STATUS MESSAGE
+// STATUS + UI STATE
 // ==============================
 
-function setStatus(message, type) {
-  const status = document.getElementById("status");
-  status.className = type || "";
-  status.innerText = message;
+function statusSymbolFor(type) {
+  if (type === "success") return "✓";
+  if (type === "error") return "!";
+  if (type === "processing") return "";
+  return "•";
 }
 
-function setPunchControlsDisabled(disabled) {
-  document.querySelectorAll("[data-punch-action]").forEach(button => {
+function statusLabelFor(type) {
+  if (type === "success") return "Completed";
+  if (type === "error") return "Needs attention";
+  if (type === "processing") return "Working";
+  return "Status";
+}
+
+function setStatus(message, type = "") {
+  const status = document.getElementById("status");
+  const card = document.getElementById("employeeStatusCard");
+  const icon = document.getElementById("employeeStatusSymbol");
+  const label = document.getElementById("employeeStatusLabel");
+
+  status.className = "";
+  status.innerText = message;
+
+  if (card) {
+    card.classList.remove("success", "error", "processing");
+    if (type) card.classList.add(type);
+  }
+
+  if (icon) icon.textContent = statusSymbolFor(type);
+  if (label) label.textContent = statusLabelFor(type);
+}
+
+function setPunchControlsDisabled(disabled, activeAction = "") {
+  const buttons = document.querySelectorAll("[data-punch-action]");
+
+  buttons.forEach(button => {
     button.disabled = disabled;
+
+    if (!button.dataset.defaultLabel) {
+      button.dataset.defaultLabel = button.querySelector(".employee-button-label")?.textContent || button.textContent.trim();
+    }
+
+    const label = button.querySelector(".employee-button-label");
+    if (!label) return;
+
+    const action = button.dataset.action;
+    if (disabled && action === activeAction) {
+      label.textContent = action === "Clock In"
+        ? "Clocking In…"
+        : action === "Clock Out"
+          ? "Clocking Out…"
+          : "Submitting…";
+    } else {
+      label.textContent = button.dataset.defaultLabel;
+    }
   });
 
   document.getElementById("name").disabled = disabled;
   document.getElementById("pin").disabled = disabled;
+}
+
+function resetEmployeeForm() {
+  const select = document.getElementById("name");
+  const pin = document.getElementById("pin");
+
+  select.value = "";
+  pin.value = "";
+  select.focus();
+}
+
+function scheduleSuccessfulReset() {
+  clearTimeout(resetTimer);
+  resetTimer = setTimeout(resetEmployeeForm, SUCCESS_RESET_DELAY_MS);
+}
+
+function vibrate(pattern) {
+  if (navigator.vibrate) navigator.vibrate(pattern);
 }
 
 // ==============================
@@ -167,35 +269,45 @@ function setPunchControlsDisabled(disabled) {
 async function send(action) {
   if (punchInFlight) return;
 
-  const name = document.getElementById("name").value.trim();
+  const nameSelect = document.getElementById("name");
   const pinInput = document.getElementById("pin");
+  const name = nameSelect.value.trim();
   const pin = pinInput.value.trim();
 
+  clearTimeout(resetTimer);
+
+  if (!navigator.onLine) {
+    setStatus("You are offline. Reconnect before submitting a punch.", "error");
+    vibrate(80);
+    return;
+  }
+
   if (name === "") {
-    setStatus("Please select your name.", "error");
-    document.getElementById("name").focus();
+    setStatus("Select your name before continuing.", "error");
+    nameSelect.focus();
+    vibrate(80);
     return;
   }
 
   if (!/^\d{4}$/.test(pin)) {
-    setStatus("Please enter your 4-digit PIN.", "error");
+    setStatus("Enter your 4-digit PIN before continuing.", "error");
     pinInput.focus();
+    vibrate(80);
     return;
   }
 
   punchInFlight = true;
-  setPunchControlsDisabled(true);
+  setPunchControlsDisabled(true, action);
 
   const actionLabel = action === "Clock In"
-    ? "Clocking in..."
+    ? `Clocking in ${name}…`
     : action === "Clock Out"
-      ? "Clocking out..."
-      : "Submitting request...";
+      ? `Clocking out ${name}…`
+      : `Submitting missed clock-out request for ${name}…`;
 
   setStatus(actionLabel, "processing");
 
   try {
-    // IP lookup is intentionally non-blocking. Use whatever value is ready now.
     const response = await fetchWithTimeout(url, {
       method: "POST",
       body: JSON.stringify({
@@ -217,10 +329,19 @@ async function send(action) {
     }
 
     if (message.startsWith("Success")) {
-      setStatus(message, "success");
+      const friendlyMessage = action === "Clock In"
+        ? `${name} is clocked in successfully.`
+        : action === "Clock Out"
+          ? `${name} is clocked out successfully.`
+          : `Missed clock-out request submitted for ${name}.`;
+
+      setStatus(friendlyMessage, "success");
       pinInput.value = "";
+      vibrate([45, 55, 45]);
+      scheduleSuccessfulReset();
     } else {
-      setStatus(message || "Unable to complete request.", "error");
+      setStatus(message.replace(/^Error:\s*/i, "") || "Unable to complete request.", "error");
+      vibrate(100);
     }
   } catch (error) {
     console.error("Clock request failed:", error);
@@ -228,14 +349,20 @@ async function send(action) {
     const timedOut = error && error.name === "AbortError";
     setStatus(
       timedOut
-        ? "Request took too long. Please try again."
-        : "Could not connect. Please try again.",
+        ? "Google took too long to respond. Nothing was retried automatically — try once more."
+        : "Could not reach the clock system. Please try again.",
       "error"
     );
+    vibrate(100);
   } finally {
     punchInFlight = false;
     setPunchControlsDisabled(false);
-    pinInput.focus();
+
+    if (!document.getElementById("name").value) {
+      document.getElementById("name").focus();
+    } else {
+      pinInput.focus();
+    }
   }
 }
 
@@ -261,8 +388,61 @@ function updateClock() {
   });
 }
 
-setInterval(updateClock, 1000);
-updateClock();
+let clockTimer = null;
+
+function startClock() {
+  if (clockTimer) clearInterval(clockTimer);
+  updateClock();
+  clockTimer = setInterval(updateClock, 1000);
+}
+
+function stopClock() {
+  if (clockTimer) clearInterval(clockTimer);
+  clockTimer = null;
+}
+
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) stopClock();
+  else startClock();
+});
+
+// ==============================
+// INPUT / KIOSK ERGONOMICS
+// ==============================
+
+function setupEmployeeInputs() {
+  const select = document.getElementById("name");
+  const pin = document.getElementById("pin");
+
+  select.addEventListener("change", () => {
+    if (select.value) {
+      setStatus(`Ready for ${select.value}. Enter PIN and choose an action.`, "");
+      pin.focus();
+    }
+  });
+
+  pin.addEventListener("input", () => {
+    const digitsOnly = pin.value.replace(/\D/g, "").slice(0, 4);
+    if (pin.value !== digitsOnly) pin.value = digitsOnly;
+  });
+
+  pin.addEventListener("keydown", event => {
+    if (event.key === "Escape") {
+      resetEmployeeForm();
+      setStatus("Selection cleared.", "");
+    }
+  });
+}
+
+// ==============================
+// STARTUP
+// ==============================
+
+setStatus("Select your name to begin.", "");
+setupEmployeeInputs();
+startClock();
+updateOnlineState();
+loadEmployees();
 
 // ==============================
 // BUTTON FUNCTIONS
