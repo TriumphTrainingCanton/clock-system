@@ -2,9 +2,18 @@
 // Adds long-shift warnings, on-demand payroll filtering/export, and missed-punch filters.
 // Heavy reads only run when the admin uses those controls.
 
-(function () {
-  const LONG_SHIFT_HOURS = 8;
+const LONG_SHIFT_HOURS = 8;
 
+// State must be initialized BEFORE setupPayrollTools() runs.
+// Keeping this above bootstrap prevents temporal-dead-zone errors across dynamically loaded scripts.
+let lastDashboardPayroll = [];
+let activePayrollItems = [];
+let activePayrollLabel = "Current Dashboard";
+let payrollMode = "dashboard";
+let fullMissedPunchRequests = null;
+let missedPunchToolsActive = false;
+
+(function () {
   const originalRenderClockedIn = window.renderClockedIn;
   if (typeof originalRenderClockedIn === "function") {
     window.renderClockedIn = function (employees) {
@@ -60,11 +69,6 @@ function applyLongShiftWarnings(employees, thresholdHours) {
     row.appendChild(warning);
   });
 }
-
-let lastDashboardPayroll = [];
-let activePayrollItems = [];
-let activePayrollLabel = "Current Dashboard";
-let payrollMode = "dashboard";
 
 function setupPayrollTools() {
   const payrollContainer = document.getElementById("payrollSummary");
@@ -235,9 +239,6 @@ function exportPayrollCsv() {
   URL.revokeObjectURL(objectUrl);
   showToast("Payroll CSV exported.", "success");
 }
-
-let fullMissedPunchRequests = null;
-let missedPunchToolsActive = false;
 
 function setupMissedPunchTools() {
   const container = document.getElementById("missedPunchRequests");
