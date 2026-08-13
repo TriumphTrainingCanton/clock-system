@@ -62,7 +62,7 @@
       if (document.getElementById("adminPolishScript")) return;
       const polishScript = document.createElement("script");
       polishScript.id = "adminPolishScript";
-      polishScript.src = "admin-polish.js?v=2";
+      polishScript.src = "admin-polish.js?v=3";
       document.body.appendChild(polishScript);
     };
     document.body.appendChild(finalScript);
