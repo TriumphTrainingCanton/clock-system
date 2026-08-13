@@ -57,7 +57,7 @@
 
     const finalScript = document.createElement("script");
     finalScript.id = "adminFinalFeaturesScript";
-    finalScript.src = "admin-final-features.js?v=2";
+    finalScript.src = "admin-final-features.js?v=3";
     finalScript.onload = () => {
       if (document.getElementById("adminPolishScript")) return;
       const polishScript = document.createElement("script");
