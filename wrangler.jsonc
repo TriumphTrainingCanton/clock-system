@@ -14,11 +14,13 @@
   "observability": {
     "enabled": true
   },
+  "keep_vars": true,
   "triggers": {
     "crons": ["* * * * *"]
   },
   "vars": {
     "APP_ENV": "staging",
-    "APP_TIME_ZONE": "America/Detroit"
+    "APP_TIME_ZONE": "America/Detroit",
+    "APPS_SCRIPT_URL": "https://script.google.com/macros/s/AKfycbwidHd1FgdRr3fUx2uqAAbBE3tUFGcFKOxqzN-lI7HT_-EFtaeVHMtRITl9faMdmyiDLA/exec"
   }
 }
