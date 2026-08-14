@@ -18,7 +18,7 @@
   ]);
 
   const CACHE_KEY = "triumph_admin_dashboard_last_good_v1";
-  const CACHE_MAX_AGE_MS = 15 * 60 * 1000;
+  const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
   const FIRST_ATTEMPT_TIMEOUT_MS = 10000;
   const PAYROLL_FAST_TIMEOUT_MS = 8000;
   const DASHBOARD_COLD_START_TIMEOUTS_MS = [12000, 18000];
@@ -134,12 +134,22 @@
 
   function refreshCacheInBackground(payload) {
     fetchReadOnce(payload, 18000)
-      .then(text => saveLastGoodDashboard(text))
+      .then(text => {
+        saveLastGoodDashboard(text);
+        window.__triumphDashboardUsedCache = false;
+      })
       .catch(error => console.warn("Background dashboard recovery did not complete.", error));
   }
 
   async function handleDashboardRead(payload) {
     const cachedBeforeRequest = getLastGoodDashboard();
+
+    // Cached-first: keep the dashboard responsive and refresh Google quietly.
+    if (cachedBeforeRequest) {
+      window.__triumphDashboardUsedCache = true;
+      refreshCacheInBackground(payload);
+      return cachedBeforeRequest.text;
+    }
 
     try {
       const text = await fetchReadOnce(payload, FIRST_ATTEMPT_TIMEOUT_MS);
