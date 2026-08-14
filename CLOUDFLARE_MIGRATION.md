@@ -23,8 +23,9 @@ change the production GitHub Pages site or the production Apps Script endpoint.
   uniqueness checks, so retrying after a timeout cannot create a duplicate.
 - Employee removal is a soft delete; completed shifts and payroll history retain
   their employee reference.
-- The existing admin PIN is preserved, but its check moves to a Cloudflare
-  secret and an HttpOnly same-site session cookie rather than public JavaScript.
+- The existing admin PIN is verified by the legacy backend only at login, then
+  carried only inside an encrypted HttpOnly same-site session cookie. Dashboard
+  refreshes no longer wait on Google and the PIN is absent from JavaScript.
 - The current action names and response shapes remain compatible with the
   existing employee and admin interfaces.
 - Every punch is committed to Neon and an encrypted Sheet-delivery outbox in
@@ -36,9 +37,8 @@ change the production GitHub Pages site or the production Apps Script endpoint.
 1. Create a least-privileged Neon role on the isolated migration branch.
 2. Add its pooled connection string as the encrypted `NEON_DATABASE_URL`
    Worker secret.
-3. Add `ADMIN_PIN_HASH` and `ADMIN_SESSION_SECRET` as encrypted Worker secrets.
-4. Add `SHEETS_SYNC_KEY` and `SHEETS_ADMIN_PIN` as encrypted Worker secrets,
-   and set `APPS_SCRIPT_URL` as a normal Worker environment variable.
+3. Add `ADMIN_SESSION_SECRET` and `SHEETS_SYNC_KEY` as encrypted Worker secrets.
+   `APPS_SCRIPT_URL` is a normal Worker environment variable.
 5. Run `002_sheet_sync_outbox.sql` on the isolated Neon branch.
 6. Deploy `triumph-clock-system-staging` to a separate `workers.dev` URL.
 7. Keep Cloudflare Pages and Apps Script live until the entire checklist below passes.

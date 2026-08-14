@@ -17,11 +17,9 @@ import {
 interface Env {
   ASSETS: Fetcher;
   NEON_DATABASE_URL?: string;
-  ADMIN_PIN_HASH?: string;
   ADMIN_SESSION_SECRET?: string;
   APPS_SCRIPT_URL?: string;
   SHEETS_SYNC_KEY?: string;
-  SHEETS_ADMIN_PIN?: string;
   APP_ENV: string;
   APP_TIME_ZONE: string;
 }
@@ -109,8 +107,9 @@ function fromBase64Url(value: string): ArrayBuffer {
   return Uint8Array.from(binary, character => character.charCodeAt(0)).buffer as ArrayBuffer;
 }
 
-async function hmacKey(secret: string): Promise<CryptoKey> {
-  return crypto.subtle.importKey("raw", encoder.encode(secret), { name: "HMAC", hash: "SHA-256" }, false, ["sign", "verify"]);
+async function sessionEncryptionKey(secret: string): Promise<CryptoKey> {
+  const digest = await crypto.subtle.digest("SHA-256", encoder.encode(secret));
+  return crypto.subtle.importKey("raw", digest, { name: "AES-GCM" }, false, ["encrypt", "decrypt"]);
 }
 
 async function sheetEncryptionKey(secret: string): Promise<CryptoKey> {
@@ -144,9 +143,6 @@ function requireSheetSync(env: Env, action: string): void {
   if (!env.APPS_SCRIPT_URL || !env.SHEETS_SYNC_KEY) {
     throw new Error("The Google Sheets backup queue is not configured.");
   }
-  if (!action.startsWith("Clock ") && action !== "Submit Missed Punch" && !env.SHEETS_ADMIN_PIN) {
-    throw new Error("The Google Sheets admin sync is not configured.");
-  }
 }
 
 function sheetSyncKey(action: string, payload: ActionPayload): string {
@@ -159,8 +155,8 @@ async function queueSheetSync(client: DbClient, env: Env, action: string, payloa
   if (!SHEET_SYNC_ACTIONS.has(action)) return;
 
   const sheetPayload: ActionPayload = { ...payload, action };
-  if (!action.startsWith("Clock ") && action !== "Submit Missed Punch") {
-    sheetPayload.adminPin = env.SHEETS_ADMIN_PIN;
+  if (!action.startsWith("Clock ") && action !== "Submit Missed Punch" && !validPin(sheetPayload.adminPin)) {
+    throw new Error("The Google Sheets admin sync is not authenticated.");
   }
   const encrypted = await encryptSheetPayload(String(env.SHEETS_SYNC_KEY), sheetPayload);
   await client.query(
@@ -213,7 +209,7 @@ async function markSheetSyncRetry(client: DbClient, id: string, message: string)
   );
 }
 
-async function sendSheetPayload(env: Env, payload: ActionPayload): Promise<void> {
+async function callSheets(env: Env, payload: ActionPayload): Promise<string> {
   if (!env.APPS_SCRIPT_URL) throw new Error("Google Sheets endpoint is unavailable.");
   const response = await fetch(env.APPS_SCRIPT_URL, {
     method: "POST",
@@ -223,9 +219,15 @@ async function sendSheetPayload(env: Env, payload: ActionPayload): Promise<void>
     signal: AbortSignal.timeout(SHEET_SYNC_TIMEOUT_MS)
   });
   const responseText = (await response.text()).trim();
-  if (!response.ok || responseText.startsWith("Error:") || responseText.startsWith("<")) {
+  if (!response.ok || responseText.startsWith("<")) {
     throw new Error(`Google Sheets delivery failed with status ${response.status}.`);
   }
+  return responseText;
+}
+
+async function sendSheetPayload(env: Env, payload: ActionPayload): Promise<void> {
+  const responseText = await callSheets(env, payload);
+  if (responseText.startsWith("Error:")) throw new Error("Google Sheets rejected the delivery.");
 }
 
 async function flushSheetOutbox(env: Env): Promise<void> {
@@ -250,48 +252,57 @@ async function flushSheetOutbox(env: Env): Promise<void> {
   }
 }
 
-async function createAdminSession(secret: string): Promise<string> {
+async function createAdminSession(secret: string, adminPin: string): Promise<string> {
   const expires = Math.floor(Date.now() / 1000) + ADMIN_SESSION_SECONDS;
-  const payload = `v1.${expires}`;
-  const signature = await crypto.subtle.sign("HMAC", await hmacKey(secret), encoder.encode(payload));
-  return `${payload}.${base64Url(signature)}`;
+  const iv = crypto.getRandomValues(new Uint8Array(12));
+  const ciphertext = await crypto.subtle.encrypt(
+    { name: "AES-GCM", iv },
+    await sessionEncryptionKey(secret),
+    encoder.encode(`${expires}.${adminPin}`)
+  );
+  return `v2.${base64Url(iv.buffer as ArrayBuffer)}.${base64Url(ciphertext)}`;
 }
 
-async function validAdminSession(request: Request, secret: string): Promise<boolean> {
+async function adminPinFromSession(request: Request, secret: string): Promise<string | null> {
   const token = parseCookies(request.headers.get("Cookie"))[ADMIN_COOKIE];
-  if (!token) return false;
+  if (!token) return null;
 
   const parts = token.split(".");
-  if (parts.length !== 3 || parts[0] !== "v1") return false;
-  const expires = Number(parts[1]);
-  if (!Number.isFinite(expires) || expires < Math.floor(Date.now() / 1000)) return false;
+  if (parts.length !== 3 || parts[0] !== "v2") return null;
 
   try {
-    return crypto.subtle.verify(
-      "HMAC",
-      await hmacKey(secret),
-      fromBase64Url(parts[2]),
-      encoder.encode(`${parts[0]}.${parts[1]}`)
+    const plaintext = await crypto.subtle.decrypt(
+      { name: "AES-GCM", iv: new Uint8Array(fromBase64Url(parts[1])) },
+      await sessionEncryptionKey(secret),
+      fromBase64Url(parts[2])
     );
+    const [expiresText, adminPin] = decoder.decode(plaintext).split(".", 2);
+    const expires = Number(expiresText);
+    if (!Number.isFinite(expires) || expires < Math.floor(Date.now() / 1000) || !validPin(adminPin)) return null;
+    return adminPin;
   } catch {
-    return false;
+    return null;
   }
 }
 
-async function assertAdmin(request: Request, env: Env): Promise<void> {
-  if (!env.ADMIN_SESSION_SECRET || !(await validAdminSession(request, env.ADMIN_SESSION_SECRET))) {
+async function assertAdmin(request: Request, env: Env): Promise<string> {
+  const adminPin = env.ADMIN_SESSION_SECRET
+    ? await adminPinFromSession(request, env.ADMIN_SESSION_SECRET)
+    : null;
+  if (!adminPin) {
     throw new Error("Admin session expired. Sign in again.");
   }
+  return adminPin;
 }
 
 async function verifyAdmin(payload: ActionPayload, env: Env): Promise<AdminResult> {
-  if (!env.ADMIN_PIN_HASH || !env.ADMIN_SESSION_SECRET) throw new Error("Admin authentication is not configured.");
+  if (!env.ADMIN_SESSION_SECRET) throw new Error("Admin authentication is not configured.");
   if (!validPin(payload.adminPin)) throw new Error("Incorrect Admin PIN.");
 
-  const valid = await bcrypt.compare(String(payload.adminPin), env.ADMIN_PIN_HASH);
-  if (!valid) throw new Error("Incorrect Admin PIN.");
+  const verification = await callSheets(env, { action: "Verify Admin", adminPin: payload.adminPin });
+  if (!verification.startsWith("Success:")) throw new Error("Incorrect Admin PIN.");
 
-  const token = await createAdminSession(env.ADMIN_SESSION_SECRET);
+  const token = await createAdminSession(env.ADMIN_SESSION_SECRET, String(payload.adminPin));
   return {
     body: "Success: Admin Dashboard Unlocked.",
     headers: {
@@ -782,7 +793,7 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
     }
 
     const isAdmin = action !== "Get Employees" && action !== "Clock In" && action !== "Clock Out" && action !== "Submit Missed Punch";
-    if (isAdmin) await assertAdmin(request, env);
+    if (isAdmin) payload.adminPin = await assertAdmin(request, env);
 
     if (!env.NEON_DATABASE_URL) throw new Error("Staging database connection is not configured.");
 
