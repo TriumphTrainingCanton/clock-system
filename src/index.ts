@@ -1,5 +1,5 @@
 import bcrypt from "bcryptjs";
-import { Client } from "pg";
+import { Client, neon, neonConfig } from "@neondatabase/serverless";
 import {
   ActionPayload,
   formatError,
@@ -16,7 +16,7 @@ import {
 
 interface Env {
   ASSETS: Fetcher;
-  HYPERDRIVE?: { connectionString: string };
+  NEON_DATABASE_URL?: string;
   ADMIN_PIN_HASH?: string;
   ADMIN_SESSION_SECRET?: string;
   APPS_SCRIPT_URL?: string;
@@ -26,7 +26,8 @@ interface Env {
   APP_TIME_ZONE: string;
 }
 
-type DbClient = Client;
+type DbResult = { rows: any[]; rowCount: number | null };
+type DbClient = { query(text: string, values?: unknown[]): Promise<DbResult> };
 type AdminResult = { body: string; headers?: HeadersInit };
 
 const ADMIN_COOKIE = "triumph_admin";
@@ -35,6 +36,8 @@ const JSON_LIMIT_BYTES = 16_384;
 const encoder = new TextEncoder();
 const decoder = new TextDecoder();
 const SHEET_SYNC_TIMEOUT_MS = 40_000;
+
+neonConfig.webSocketConstructor = WebSocket;
 
 const SHEET_SYNC_ACTIONS = new Set([
   "Clock In",
@@ -171,7 +174,7 @@ async function queueSheetSync(client: DbClient, env: Env, action: string, payloa
 type SheetSyncRow = { id: string; encrypted_payload: string };
 
 async function claimSheetSyncRow(client: DbClient): Promise<SheetSyncRow | null> {
-  const result = await client.query<SheetSyncRow>(`
+  const result = await client.query(`
     WITH candidate AS (
       SELECT id
       FROM sheet_sync_outbox
@@ -187,7 +190,7 @@ async function claimSheetSyncRow(client: DbClient): Promise<SheetSyncRow | null>
     WHERE o.id=candidate.id
     RETURNING o.id, o.encrypted_payload
   `);
-  return result.rows[0] ?? null;
+  return (result.rows[0] as SheetSyncRow | undefined) ?? null;
 }
 
 async function markSheetSyncComplete(client: DbClient, id: string): Promise<void> {
@@ -226,8 +229,8 @@ async function sendSheetPayload(env: Env, payload: ActionPayload): Promise<void>
 }
 
 async function flushSheetOutbox(env: Env): Promise<void> {
-  if (!env.HYPERDRIVE?.connectionString || !env.SHEETS_SYNC_KEY || !env.APPS_SCRIPT_URL) return;
-  const client = new Client({ connectionString: env.HYPERDRIVE.connectionString });
+  if (!env.NEON_DATABASE_URL || !env.SHEETS_SYNC_KEY || !env.APPS_SCRIPT_URL) return;
+  const client = new Client({ connectionString: env.NEON_DATABASE_URL });
   await client.connect();
   let row: SheetSyncRow | null = null;
   try {
@@ -781,20 +784,33 @@ async function handleApi(request: Request, env: Env): Promise<Response> {
     const isAdmin = action !== "Get Employees" && action !== "Clock In" && action !== "Clock Out" && action !== "Submit Missed Punch";
     if (isAdmin) await assertAdmin(request, env);
 
-    if (!env.HYPERDRIVE?.connectionString) throw new Error("Staging database binding is not configured.");
-    const client = new Client({ connectionString: env.HYPERDRIVE.connectionString });
+    if (!env.NEON_DATABASE_URL) throw new Error("Staging database connection is not configured.");
+
+    if (action === "Get Employees" || isReadAction(action)) {
+      const sql = neon(env.NEON_DATABASE_URL, { fullResults: true });
+      const readClient: DbClient = {
+        query: (text, values = []) => sql.query(text, values) as Promise<DbResult>
+      };
+      let body: string;
+      if (action === "Get Employees") body = await getEmployees(readClient);
+      else body = await handleAdminAction(readClient, payload, env);
+
+      const headers: Record<string, string> = {};
+      if (action === "Get Employees") headers["cache-control"] = "private, max-age=60";
+      else headers["cache-control"] = "no-store";
+      return textResponse(body, 200, headers);
+    }
+
+    const client = new Client({ connectionString: env.NEON_DATABASE_URL });
     await client.connect();
     try {
       let body: string;
-      if (action === "Get Employees") body = await getEmployees(client);
-      else if (action === "Clock In") body = await clockIn(client, payload, request, env);
+      if (action === "Clock In") body = await clockIn(client, payload, request, env);
       else if (action === "Clock Out") body = await clockOut(client, payload, request, env);
       else if (action === "Submit Missed Punch") body = await submitMissedPunch(client, payload, env);
       else body = await handleAdminAction(client, payload, env);
 
-      const headers: HeadersInit = {};
-      if (action === "Get Employees") headers["cache-control"] = "private, max-age=60";
-      else if (isReadAction(action)) headers["cache-control"] = "no-store";
+      const headers: Record<string, string> = {};
       return textResponse(body, 200, headers);
     } finally {
       await client.end().catch(() => undefined);

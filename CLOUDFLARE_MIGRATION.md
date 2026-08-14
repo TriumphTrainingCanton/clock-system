@@ -8,7 +8,8 @@ change the production GitHub Pages site or the production Apps Script endpoint.
 - Cloudflare serves the existing static portal from its edge network.
 - The browser calls a same-origin `/api` Worker instead of a cross-origin Apps
   Script deployment.
-- Hyperdrive pools and routes Worker connections to Neon Postgres.
+- Neon HTTPS queries keep employee lists and admin reads to one low-latency
+  request; transactional punch writes use Neon's serverless connection.
 - The main admin dashboard is assembled with one Postgres query and one network
   response instead of a chain of backend reads.
 - The existing cached-first dashboard and payroll rendering remain in place, so
@@ -33,14 +34,14 @@ change the production GitHub Pages site or the production Apps Script endpoint.
 ## Staging resources required
 
 1. Create a least-privileged Neon role on the isolated migration branch.
-2. Create a Cloudflare Hyperdrive configuration using that branch and role.
-3. Add the returned binding as `HYPERDRIVE` in `wrangler.jsonc`.
-4. Add `ADMIN_PIN_HASH` and `ADMIN_SESSION_SECRET` as encrypted Worker secrets.
-5. Add `SHEETS_SYNC_KEY` and `SHEETS_ADMIN_PIN` as encrypted Worker secrets,
+2. Add its pooled connection string as the encrypted `NEON_DATABASE_URL`
+   Worker secret.
+3. Add `ADMIN_PIN_HASH` and `ADMIN_SESSION_SECRET` as encrypted Worker secrets.
+4. Add `SHEETS_SYNC_KEY` and `SHEETS_ADMIN_PIN` as encrypted Worker secrets,
    and set `APPS_SCRIPT_URL` as a normal Worker environment variable.
-6. Run `002_sheet_sync_outbox.sql` on the isolated Neon branch.
-7. Deploy `triumph-clock-system-staging` to a separate `workers.dev` URL.
-8. Keep Cloudflare Pages and Apps Script live until the entire checklist below passes.
+5. Run `002_sheet_sync_outbox.sql` on the isolated Neon branch.
+6. Deploy `triumph-clock-system-staging` to a separate `workers.dev` URL.
+7. Keep Cloudflare Pages and Apps Script live until the entire checklist below passes.
 
 Never commit a database URL, PIN, PIN hash, role password, or session secret.
 
