@@ -299,8 +299,16 @@ async function verifyAdmin(payload: ActionPayload, env: Env): Promise<AdminResul
   if (!env.ADMIN_SESSION_SECRET) throw new Error("Admin authentication is not configured.");
   if (!validPin(payload.adminPin)) throw new Error("Incorrect Admin PIN.");
 
-  const verification = await callSheets(env, { action: "Verify Admin", adminPin: payload.adminPin });
-  if (!verification.startsWith("Success:")) throw new Error("Incorrect Admin PIN.");
+  // The legacy Apps Script does not expose a standalone "Verify Admin" action.
+  // Reuse its authenticated dashboard read once at login, then rely on the
+  // encrypted Worker session for subsequent fast Neon-backed admin requests.
+  const verification = await callSheets(env, { action: "Get Admin Dashboard", adminPin: payload.adminPin });
+  try {
+    const dashboard = JSON.parse(verification);
+    if (!dashboard || typeof dashboard !== "object" || Array.isArray(dashboard)) throw new Error();
+  } catch {
+    throw new Error("Incorrect Admin PIN.");
+  }
 
   const token = await createAdminSession(env.ADMIN_SESSION_SECRET, String(payload.adminPin));
   return {
