@@ -18,7 +18,7 @@
   ]);
 
   const CACHE_KEY = "triumph_admin_dashboard_last_good_v1";
-  const CACHE_MAX_AGE_MS = 15 * 60 * 1000;
+  const CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
   const FIRST_ATTEMPT_TIMEOUT_MS = 10000;
   const PAYROLL_FAST_TIMEOUT_MS = 8000;
   const DASHBOARD_COLD_START_TIMEOUTS_MS = [12000, 18000];
