@@ -134,12 +134,25 @@
 
   function refreshCacheInBackground(payload) {
     fetchReadOnce(payload, 18000)
-      .then(text => saveLastGoodDashboard(text))
+      .then(text => {
+        saveLastGoodDashboard(text);
+        window.__triumphDashboardUsedCache = false;
+        if (typeof loadAdminDashboard === "function") {
+          loadAdminDashboard({ quiet: true, backgroundText: text });
+        }
+      })
       .catch(error => console.warn("Background dashboard recovery did not complete.", error));
   }
 
   async function handleDashboardRead(payload) {
     const cachedBeforeRequest = getLastGoodDashboard();
+
+    // Cached-first: keep the dashboard responsive and refresh Google quietly.
+    if (cachedBeforeRequest) {
+      window.__triumphDashboardUsedCache = true;
+      refreshCacheInBackground(payload);
+      return cachedBeforeRequest.text;
+    }
 
     try {
       const text = await fetchReadOnce(payload, FIRST_ATTEMPT_TIMEOUT_MS);
