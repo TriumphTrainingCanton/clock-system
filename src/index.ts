@@ -227,7 +227,15 @@ async function callSheets(env: Env, payload: ActionPayload): Promise<string> {
 
 async function sendSheetPayload(env: Env, payload: ActionPayload): Promise<void> {
   const responseText = await callSheets(env, payload);
-  if (responseText.startsWith("Error:")) throw new Error("Google Sheets rejected the delivery.");
+  if (!responseText.startsWith("Success")) {
+    const employeeName = typeof payload.name === "string" ? payload.name.trim() : "";
+    const safeResponse = responseText
+      .replace(/\b\d{4}\b/g, "[redacted]")
+      .replace(employeeName, employeeName ? "[employee]" : "")
+      .replace(/\s+/g, " ")
+      .slice(0, 160);
+    throw new Error(`Google Sheets rejected the delivery: ${safeResponse || "empty response"}`);
+  }
 }
 
 async function flushSheetOutbox(env: Env): Promise<void> {
