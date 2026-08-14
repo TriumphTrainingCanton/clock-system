@@ -137,9 +137,6 @@
       .then(text => {
         saveLastGoodDashboard(text);
         window.__triumphDashboardUsedCache = false;
-        if (typeof loadAdminDashboard === "function") {
-          loadAdminDashboard({ quiet: true, backgroundText: text });
-        }
       })
       .catch(error => console.warn("Background dashboard recovery did not complete.", error));
   }
