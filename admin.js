@@ -1,6 +1,6 @@
-const url = "https://script.google.com/macros/s/AKfycbwidHd1FgdRr3fUx2uqAAbBE3tUFGcFKOxqzN-lI7HT_-EFtaeVHMtRITl9faMdmyiDLA/exec";
+const url = "/api";
 
-const ADMIN_PIN = "1976";
+let ADMIN_PIN = "";
 let allEmployees = [];
 let pendingAdminRequests = 0;
 let activeModalAction = null;
@@ -38,8 +38,24 @@ function setRefreshBusy(isBusy) {
 }
 
 async function postToBackend(payload) {
+  const mutationActions = new Set([
+    "Add Employee",
+    "Update Employee",
+    "Deactivate Employee",
+    "Reactivate Employee",
+    "Delete Employee",
+    "Update Missed Punch Status"
+  ]);
+  if (mutationActions.has(String(payload.action)) && !payload.requestId) {
+    payload = {
+      ...payload,
+      requestId: (crypto.randomUUID?.() || `${Date.now()}_${Math.random().toString(36).slice(2)}`).replace(/[^A-Za-z0-9_-]/g, "")
+    };
+  }
   const response = await fetch(url, {
     method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "same-origin",
     body: JSON.stringify(payload)
   });
 
@@ -84,21 +100,32 @@ function renderIfChanged(key, value, renderer) {
   return true;
 }
 
-function unlockAdmin() {
+async function unlockAdmin() {
   const pin = document.getElementById("adminPin").value.trim();
   const dashboard = document.getElementById("dashboard");
   const loginPanel = document.getElementById("loginPanel");
 
-  if (pin !== ADMIN_PIN) {
+  if (!/^\d{4}$/.test(pin)) {
     setAdminStatus("Error: Incorrect Admin PIN.", "error");
     dashboard.style.display = "none";
     return;
   }
 
-  setAdminStatus("Admin Dashboard Unlocked.", "success");
-  loginPanel.style.display = "none";
-  dashboard.style.display = "block";
-  loadAdminDashboard();
+  setAdminStatus("Verifying Admin PIN...", "processing");
+  try {
+    const message = await postToBackend({ action: "Verify Admin", adminPin: pin });
+    if (!message.startsWith("Success")) throw new Error(message.replace(/^Error:\s*/i, ""));
+
+    ADMIN_PIN = "";
+    document.getElementById("adminPin").value = "";
+    setAdminStatus("Admin Dashboard Unlocked.", "success");
+    loginPanel.style.display = "none";
+    dashboard.style.display = "block";
+    loadAdminDashboard();
+  } catch (error) {
+    setAdminStatus(`Error: ${error.message || "Incorrect Admin PIN."}`, "error");
+    dashboard.style.display = "none";
+  }
 }
 
 async function loadAdminDashboard(options = {}) {

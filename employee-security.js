@@ -5,12 +5,10 @@ const TRIUMPH_PENDING_REQUEST_KEY = "triumph_employee_pending_request_v1";
 const TRIUMPH_PENDING_REQUEST_MAX_AGE_MS = 2 * 60 * 1000;
 
 function triumphCreateRequestId() {
-  if (globalThis.crypto && typeof globalThis.crypto.randomUUID === "function") {
-    return globalThis.crypto.randomUUID().replace(/-/g, "_");
+  if (!globalThis.crypto || typeof globalThis.crypto.randomUUID !== "function") {
+    throw new Error("This browser cannot safely create a request ID. Please update the browser.");
   }
-
-  const random = Math.random().toString(36).slice(2);
-  return `${Date.now().toString(36)}_${random}_${random}`.slice(0, 70);
+  return globalThis.crypto.randomUUID().replace(/-/g, "_");
 }
 
 function triumphReadPendingRequest() {
@@ -112,6 +110,8 @@ send = async function (action, extra = {}) {
   try {
     const response = await fetchWithTimeout(url, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
       body: JSON.stringify({
         name,
         pin,
@@ -154,7 +154,7 @@ send = async function (action, extra = {}) {
     const timedOut = error && error.name === "AbortError";
     setStatus(
       timedOut
-        ? "Google took too long to respond. Tap the same action again — duplicate protection is active."
+        ? "The clock system took too long to respond. Tap the same action again — duplicate protection is active."
         : "Could not reach the clock system. Please try again.",
       "error"
     );

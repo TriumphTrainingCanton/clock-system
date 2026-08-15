@@ -1,4 +1,4 @@
-const url = "https://script.google.com/macros/s/AKfycbwidHd1FgdRr3fUx2uqAAbBE3tUFGcFKOxqzN-lI7HT_-EFtaeVHMtRITl9faMdmyiDLA/exec";
+const url = "/api";
 
 const EMPLOYEE_CACHE_KEY = "triumph_employee_list_v1";
 const EMPLOYEE_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -147,6 +147,8 @@ async function loadEmployees() {
   try {
     const response = await fetchWithTimeout(url, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
       body: JSON.stringify({ action: "Get Employees" })
     }, 8000);
 
@@ -310,6 +312,8 @@ async function send(action) {
   try {
     const response = await fetchWithTimeout(url, {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin",
       body: JSON.stringify({
         name,
         pin,
@@ -349,7 +353,7 @@ async function send(action) {
     const timedOut = error && error.name === "AbortError";
     setStatus(
       timedOut
-        ? "Google took too long to respond. Nothing was retried automatically — try once more."
+        ? "The clock system took too long to respond. Nothing was retried automatically — try once more."
         : "Could not reach the clock system. Please try again.",
       "error"
     );
