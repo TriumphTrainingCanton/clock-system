@@ -1,4 +1,6 @@
-const url = "/api";
+const IS_LEGACY_PAGES = window.location.hostname === "clock-system.pages.dev";
+const LEGACY_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwidHd1FgdRr3fUx2uqAAbBE3tUFGcFKOxqzN-lI7HT_-EFtaeVHMtRITl9faMdmyiDLA/exec";
+const url = IS_LEGACY_PAGES ? LEGACY_APPS_SCRIPT_URL : "/api";
 
 const EMPLOYEE_CACHE_KEY = "triumph_employee_list_v1";
 const EMPLOYEE_CACHE_MAX_AGE_MS = 24 * 60 * 60 * 1000;
@@ -147,8 +149,10 @@ async function loadEmployees() {
   try {
     const response = await fetchWithTimeout(url, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "same-origin",
+      ...(IS_LEGACY_PAGES ? {} : {
+        headers: { "Content-Type": "application/json" },
+        credentials: "same-origin"
+      }),
       body: JSON.stringify({ action: "Get Employees" })
     }, 8000);
 
