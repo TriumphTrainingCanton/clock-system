@@ -1,4 +1,6 @@
-const url = "/api";
+const IS_LEGACY_PAGES = window.location.hostname === "clock-system.pages.dev";
+const LEGACY_APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbwidHd1FgdRr3fUx2uqAAbBE3tUFGcFKOxqzN-lI7HT_-EFtaeVHMtRITl9faMdmyiDLA/exec";
+const url = IS_LEGACY_PAGES ? LEGACY_APPS_SCRIPT_URL : "/api";
 
 let ADMIN_PIN = "";
 let allEmployees = [];
@@ -54,8 +56,10 @@ async function postToBackend(payload) {
   }
   const response = await fetch(url, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
-    credentials: "same-origin",
+    ...(IS_LEGACY_PAGES ? {} : {
+      headers: { "Content-Type": "application/json" },
+      credentials: "same-origin"
+    }),
     body: JSON.stringify(payload)
   });
 
@@ -113,10 +117,18 @@ async function unlockAdmin() {
 
   setAdminStatus("Verifying Admin PIN...", "processing");
   try {
-    const message = await postToBackend({ action: "Verify Admin", adminPin: pin });
-    if (!message.startsWith("Success")) throw new Error(message.replace(/^Error:\s*/i, ""));
-
-    ADMIN_PIN = "";
+    const message = await postToBackend({
+      action: IS_LEGACY_PAGES ? "Get Admin Dashboard" : "Verify Admin",
+      adminPin: pin
+    });
+    if (IS_LEGACY_PAGES) {
+      const verification = JSON.parse(message);
+      if (!verification || typeof verification !== "object" || Array.isArray(verification)) throw new Error();
+      ADMIN_PIN = pin;
+    } else {
+      if (!message.startsWith("Success")) throw new Error(message.replace(/^Error:\s*/i, ""));
+      ADMIN_PIN = "";
+    }
     document.getElementById("adminPin").value = "";
     setAdminStatus("Admin Dashboard Unlocked.", "success");
     loginPanel.style.display = "none";
