@@ -4,8 +4,8 @@ Employee clock-in/clock-out and admin dashboard for Triumph Training.
 
 ## Official deployment
 
-- Employee portal: https://clock-system.aditya-ananth2.workers.dev/
-- Admin dashboard: https://clock-system.aditya-ananth2.workers.dev/admin
+- Employee portal: https://clock-system.triumphtrainingcanton.workers.dev/
+- Admin dashboard: https://clock-system.triumphtrainingcanton.workers.dev/admin
 - Legacy rollback only: https://clock-system.pages.dev/
 
 Daily punches use the Cloudflare Worker and Neon backend. The legacy Pages deployment remains available only for rollback and continues to use the Google Apps Script backend.
