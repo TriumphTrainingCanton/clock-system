@@ -1,6 +1,6 @@
 // Triumph Training admin reliability layer.
 // Retries ONLY read-only admin requests. Write actions are never retried.
-// Keeps a short-lived last-known-good dashboard so transient Apps Script hiccups
+// Keeps a short-lived last-known-good dashboard so transient backend hiccups
 // do not blank the admin panel or make repeat visits wait through long retries.
 
 (function () {
@@ -93,6 +93,10 @@
     try {
       const response = await fetch(url, {
         method: "POST",
+        ...(IS_LEGACY_PAGES ? {} : {
+          headers: { "Content-Type": "application/json" },
+          credentials: "same-origin"
+        }),
         body: JSON.stringify(payload),
         signal: controller.signal
       });
@@ -121,7 +125,7 @@
     setTimeout(() => {
       if (typeof setAdminStatus === "function") {
         setAdminStatus(
-          `Google is responding slowly. Keeping the last successful dashboard from about ${ageMinutes} min ago.`,
+          `Live refresh delayed. Keeping the last successful dashboard from about ${ageMinutes} min ago.`,
           "processing"
         );
       }
@@ -141,10 +145,40 @@
       .catch(error => console.warn("Background dashboard recovery did not complete.", error));
   }
 
+  async function handleWorkerDashboardRead(payload, cachedBeforeRequest) {
+    try {
+      const text = await fetchReadOnce(payload, FIRST_ATTEMPT_TIMEOUT_MS);
+      saveLastGoodDashboard(text);
+      window.__triumphDashboardUsedCache = false;
+      return text;
+    } catch (firstError) {
+      console.warn("Dashboard live refresh attempt failed.", firstError);
+
+      if (cachedBeforeRequest) {
+        window.__triumphDashboardUsedCache = true;
+        announceCachedFallback(cachedBeforeRequest.ageMs);
+        return cachedBeforeRequest.text;
+      }
+
+      await wait(RETRY_DELAYS_MS[0] || 350);
+      const text = await fetchReadOnce(payload, READ_RETRY_TIMEOUT_MS);
+      saveLastGoodDashboard(text);
+      window.__triumphDashboardUsedCache = false;
+      return text;
+    }
+  }
+
   async function handleDashboardRead(payload) {
     const cachedBeforeRequest = getLastGoodDashboard();
 
-    // Cached-first: keep the dashboard responsive and refresh Google quietly.
+    // The official Cloudflare deployment reads the dashboard from Neon, so a
+    // refresh should actually return live data. Keep cache only as a fallback.
+    if (!IS_LEGACY_PAGES) {
+      return handleWorkerDashboardRead(payload, cachedBeforeRequest);
+    }
+
+    // Legacy Pages still talks directly to Apps Script. Keep cached-first there
+    // so a Google cold start does not block the rollback dashboard.
     if (cachedBeforeRequest) {
       window.__triumphDashboardUsedCache = true;
       refreshCacheInBackground(payload);
@@ -158,13 +192,6 @@
       return text;
     } catch (firstError) {
       console.warn("Dashboard live refresh attempt failed.", firstError);
-
-      if (cachedBeforeRequest) {
-        window.__triumphDashboardUsedCache = true;
-        announceCachedFallback(cachedBeforeRequest.ageMs);
-        refreshCacheInBackground(payload);
-        return cachedBeforeRequest.text;
-      }
 
       const errors = [firstError];
 
