@@ -12,15 +12,30 @@ let punchInFlight = false;
 let portalReady = false;
 let resetTimer = null;
 
-function fetchWithTimeout(requestUrl, options = {}, timeoutMs = REQUEST_TIMEOUT_MS) {
-  const controller = new AbortController();
-  const timeout = setTimeout(() => controller.abort(), timeoutMs);
+function fetchWithTimeout(requestUrl, options, timeoutMs) {
+  const requestOptions = Object.assign({}, options || {}, { cache: "no-store" });
+  const requestTimeout = typeof timeoutMs === "number" ? timeoutMs : REQUEST_TIMEOUT_MS;
 
-  return fetch(requestUrl, {
-    ...options,
-    signal: controller.signal,
-    cache: "no-store"
-  }).finally(() => clearTimeout(timeout));
+  if (typeof AbortController === "undefined") {
+    return fetch(requestUrl, requestOptions);
+  }
+
+  const controller = new AbortController();
+  requestOptions.signal = controller.signal;
+  const timeout = setTimeout(function () {
+    controller.abort();
+  }, requestTimeout);
+
+  return fetch(requestUrl, requestOptions).then(
+    function (response) {
+      clearTimeout(timeout);
+      return response;
+    },
+    function (error) {
+      clearTimeout(timeout);
+      throw error;
+    }
+  );
 }
 
 function setPortalReady(ready, label) {
@@ -147,14 +162,17 @@ async function loadEmployees() {
   }
 
   try {
-    const response = await fetchWithTimeout(url, {
+    const employeeRequestOptions = {
       method: "POST",
-      ...(IS_LEGACY_PAGES ? {} : {
-        headers: { "Content-Type": "application/json" },
-        credentials: "same-origin"
-      }),
       body: JSON.stringify({ action: "Get Employees" })
-    }, 8000);
+    };
+
+    if (!IS_LEGACY_PAGES) {
+      employeeRequestOptions.headers = { "Content-Type": "application/json" };
+      employeeRequestOptions.credentials = "same-origin";
+    }
+
+    const response = await fetchWithTimeout(url, employeeRequestOptions, 8000);
 
     if (!response.ok) {
       throw new Error("Employee request returned " + response.status);
