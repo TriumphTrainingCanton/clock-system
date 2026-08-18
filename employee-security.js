@@ -124,18 +124,19 @@ send = async function (action, extra = {}) {
   setStatus(actionLabel, "processing");
 
   try {
+    const requestBody = Object.assign({
+      name: name,
+      pin: pin,
+      action: action,
+      ipAddress: cachedIP,
+      requestId: requestId
+    }, extra);
+
     const response = await fetchWithTimeout(url, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "same-origin",
-      body: JSON.stringify({
-        name,
-        pin,
-        action,
-        ipAddress: cachedIP,
-        requestId,
-        ...extra
-      })
+      body: JSON.stringify(requestBody)
     });
 
     if (!response.ok) throw new Error("Server returned " + response.status);
