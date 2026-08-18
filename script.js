@@ -228,7 +228,8 @@ function setPunchControlsDisabled(disabled, activeAction = "") {
     button.disabled = disabled;
 
     if (!button.dataset.defaultLabel) {
-      button.dataset.defaultLabel = button.querySelector(".employee-button-label")?.textContent || button.textContent.trim();
+      const buttonLabel = button.querySelector(".employee-button-label");
+      button.dataset.defaultLabel = (buttonLabel && buttonLabel.textContent) || button.textContent.trim();
     }
 
     const label = button.querySelector(".employee-button-label");
