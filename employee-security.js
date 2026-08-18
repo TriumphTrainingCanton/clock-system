@@ -5,10 +5,26 @@ const TRIUMPH_PENDING_REQUEST_KEY = "triumph_employee_pending_request_v1";
 const TRIUMPH_PENDING_REQUEST_MAX_AGE_MS = 2 * 60 * 1000;
 
 function triumphCreateRequestId() {
-  if (!globalThis.crypto || typeof globalThis.crypto.randomUUID !== "function") {
+  const cryptoObject = window.crypto || window.msCrypto;
+  if (!cryptoObject || typeof cryptoObject.getRandomValues !== "function") {
     throw new Error("This browser cannot safely create a request ID. Please update the browser.");
   }
-  return globalThis.crypto.randomUUID().replace(/-/g, "_");
+
+  if (typeof cryptoObject.randomUUID === "function") {
+    return cryptoObject.randomUUID().replace(/-/g, "_");
+  }
+
+  const randomBytes = new Uint8Array(16);
+  cryptoObject.getRandomValues(randomBytes);
+  randomBytes[6] = (randomBytes[6] & 15) | 64;
+  randomBytes[8] = (randomBytes[8] & 63) | 128;
+
+  const hex = [];
+  for (let index = 0; index < randomBytes.length; index += 1) {
+    hex.push((randomBytes[index] + 256).toString(16).slice(1));
+  }
+
+  return "triumph_" + hex.join("");
 }
 
 function triumphReadPendingRequest() {
