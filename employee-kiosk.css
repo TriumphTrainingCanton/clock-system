@@ -1,0 +1,111 @@
+.kiosk-idle-screen {
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 50% 20%, rgba(37, 99, 235, 0.3), transparent 36%),
+    radial-gradient(circle at 75% 82%, rgba(34, 197, 94, 0.14), transparent 32%),
+    linear-gradient(145deg, #030914 0%, #07172b 48%, #0b1d38 100%);
+  color: #f8fafc;
+  cursor: none;
+}
+
+.kiosk-idle-screen[hidden] {
+  display: none;
+}
+
+.kiosk-idle-screen::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255, 255, 255, 0.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255, 255, 255, 0.022) 1px, transparent 1px);
+  background-size: 46px 46px;
+  mask-image: linear-gradient(to bottom, rgba(0, 0, 0, 0.65), transparent 90%);
+}
+
+.kiosk-idle-glow {
+  position: absolute;
+  width: min(72vw, 680px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 1px solid rgba(96, 165, 250, 0.12);
+  box-shadow:
+    0 0 100px rgba(37, 99, 235, 0.12),
+    inset 0 0 100px rgba(37, 99, 235, 0.08);
+}
+
+.kiosk-idle-content {
+  position: relative;
+  z-index: 1;
+  width: min(90vw, 720px);
+  padding: 48px 32px;
+  text-align: center;
+}
+
+.kiosk-idle-logo {
+  width: clamp(96px, 15vw, 150px);
+  padding: 10px;
+  border-radius: 24px;
+  filter: drop-shadow(0 18px 34px rgba(0, 0, 0, 0.34));
+}
+
+.kiosk-idle-eyebrow {
+  margin: 22px 0 14px;
+  color: #bfdbfe;
+  font-size: clamp(14px, 2vw, 20px);
+  font-weight: 850;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+}
+
+.kiosk-idle-time {
+  margin: 0;
+  font-size: clamp(64px, 13vw, 136px);
+  font-weight: 850;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: -0.055em;
+  line-height: 0.95;
+  text-shadow: 0 18px 48px rgba(0, 0, 0, 0.28);
+}
+
+.kiosk-idle-date {
+  margin: 20px 0 0;
+  color: #cbd5e1;
+  font-size: clamp(18px, 3vw, 28px);
+  font-weight: 650;
+}
+
+.kiosk-idle-prompt {
+  display: inline-flex;
+  margin: 42px 0 0;
+  padding: 12px 20px;
+  border: 1px solid rgba(148, 163, 184, 0.2);
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.055);
+  color: #a8b5c8;
+  font-size: clamp(13px, 1.8vw, 17px);
+  font-weight: 700;
+}
+
+@media (max-width: 560px) {
+  .kiosk-idle-content {
+    padding: 32px 20px;
+  }
+
+  .kiosk-idle-prompt {
+    margin-top: 32px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .kiosk-idle-screen,
+  .kiosk-idle-screen * {
+    animation: none !important;
+    transition: none !important;
+  }
+}

@@ -11,6 +11,8 @@ const assets = [
   "employee.css",
   "employee-workflow.css",
   "employee-security.js",
+  "employee-kiosk.js",
+  "employee-kiosk.css",
   "style.css",
   "admin.css",
   "admin-reliability.js",
