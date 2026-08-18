@@ -4,7 +4,7 @@
   const parameters = new URLSearchParams(window.location.search);
   if (parameters.get("kiosk") !== "1") return;
 
-  const IDLE_DELAY_MS = 30_000;
+  const IDLE_DELAY_MS = 30000;
   const POINTER_THROTTLE_MS = 250;
   const timeFormatter = new Intl.DateTimeFormat("en-US", {
     timeZone: "America/Detroit",
@@ -60,7 +60,7 @@
     screen.hidden = false;
     document.documentElement.classList.add("kiosk-is-idle");
     stopIdleClock();
-    clockTimer = window.setInterval(updateIdleClock, 1_000);
+    clockTimer = window.setInterval(updateIdleClock, 1000);
   }
 
   function hideIdleScreen() {
