@@ -10,7 +10,7 @@ const assets = [
   "admin.js",
   "employee.css",
   "employee-workflow.css",
-  "employee-security.js",
+  "employee-security.js",\n  "employee-kiosk.js",\n  "employee-kiosk.css",
   "style.css",
   "admin.css",
   "admin-reliability.js",
