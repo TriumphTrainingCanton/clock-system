@@ -4,7 +4,8 @@ Employee clock-in/clock-out and admin dashboard for Triumph Training.
 
 ## Official deployment
 
-- Employee portal: https://clock-system.triumphtrainingcanton.workers.dev/\n- Raspberry Pi kiosk mode: https://clock-system.triumphtrainingcanton.workers.dev/?kiosk=1 (30-second branded idle screen)
+- Employee portal: https://clock-system.triumphtrainingcanton.workers.dev/
+- Raspberry Pi kiosk mode: https://clock-system.triumphtrainingcanton.workers.dev/?kiosk=1 (30-second branded idle screen)
 - Admin dashboard: https://clock-system.triumphtrainingcanton.workers.dev/admin
 - Legacy rollback only: https://clock-system.pages.dev/
 
